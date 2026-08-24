@@ -199,7 +199,10 @@ async def seed() -> None:
         await db.flush()  # assign ids to maya, listings, roommate_users
 
         for u, rm in zip(roommate_users, ROOMMATES):
-            db.add(RoommateProfile(user_id=u.id, **rm))
+            # "verified" isn't a settable field anymore — RoommateProfile.verified is now a
+            # property derived from the owning user's verification_status (set above).
+            profile_fields = {k: v for k, v in rm.items() if k != "verified"}
+            db.add(RoommateProfile(user_id=u.id, **profile_fields))
 
         sunny_studio, foundry_house = listings[0], listings[1]
 
