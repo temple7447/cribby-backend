@@ -31,4 +31,7 @@ class UserUpdate(BaseModel):
     name: str | None = None
     school: str | None = None
     avatar_emoji: str | None = None
-    verification_status: str | None = None
+
+
+class VerifyConfirmRequest(BaseModel):
+    code: str

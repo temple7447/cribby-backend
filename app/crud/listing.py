@@ -15,7 +15,7 @@ class CRUDListing(CRUDBase[Listing, dict]):
         room_type: str | None = None,
         q: str | None = None,
     ) -> list[Listing]:
-        stmt = select(Listing)
+        stmt = select(Listing).where(Listing.is_hidden == False)  # noqa: E712
         if max_price is not None:
             stmt = stmt.where(Listing.price_per <= max_price)
         if max_walk is not None:

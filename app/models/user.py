@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, func
+from sqlalchemy import Boolean, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -26,6 +26,15 @@ class User(Base):
     verification_status: Mapped[str] = mapped_column(
         String(20), default="unverified", nullable=False
     )
+    # sha256 hex digest of the current 6-digit code; cleared once verified
+    verification_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_code_expires_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True
+    )
+    verification_code_last_sent_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True
+    )
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 
     bookings: Mapped[list["Booking"]] = relationship(back_populates="user")

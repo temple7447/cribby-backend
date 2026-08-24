@@ -11,7 +11,9 @@ async def list_conversations_for_user(db: AsyncSession, user_id: int) -> list[Co
     stmt = (
         select(Conversation)
         .where(Conversation.user_id == user_id)
-        .options(selectinload(Conversation.messages))
+        .options(
+            selectinload(Conversation.messages), selectinload(Conversation.roommate_profile)
+        )
         .order_by(Conversation.created_at.desc())
     )
     result = await db.execute(stmt)
@@ -22,7 +24,9 @@ async def get_conversation_for_user(db: AsyncSession, id: int, user_id: int) -> 
     stmt = (
         select(Conversation)
         .where(Conversation.id == id, Conversation.user_id == user_id)
-        .options(selectinload(Conversation.messages))
+        .options(
+            selectinload(Conversation.messages), selectinload(Conversation.roommate_profile)
+        )
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
@@ -45,11 +49,15 @@ async def find_or_create(
     listing_id: int | None,
     roommate_profile_id: int | None,
 ) -> Conversation:
-    stmt = select(Conversation).where(
-        Conversation.user_id == user_id,
-        Conversation.kind == kind,
-        Conversation.listing_id == listing_id,
-        Conversation.roommate_profile_id == roommate_profile_id,
+    stmt = (
+        select(Conversation)
+        .where(
+            Conversation.user_id == user_id,
+            Conversation.kind == kind,
+            Conversation.listing_id == listing_id,
+            Conversation.roommate_profile_id == roommate_profile_id,
+        )
+        .options(selectinload(Conversation.roommate_profile))
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing is not None:
@@ -57,6 +65,7 @@ async def find_or_create(
         return existing
 
     title, subtitle, emoji, grad = "New chat", "", "💬", "from-violet to-mint"
+    roommate: RoommateProfile | None = None
     if kind == "landlord" and listing_id is not None:
         listing = await db.get(Listing, listing_id)
         if listing is not None:
@@ -89,4 +98,5 @@ async def find_or_create(
     db.add(conversation)
     await db.commit()
     await db.refresh(conversation, attribute_names=["messages"])
+    conversation.roommate_profile = roommate if kind == "roommate" else None
     return conversation

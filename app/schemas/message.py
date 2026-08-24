@@ -29,6 +29,7 @@ class ConversationRead(BaseModel):
     kind: str
     listing_id: int | None
     roommate_profile_id: int | None
+    counterpart_user_id: int | None
     title: str
     subtitle: str
     emoji: str

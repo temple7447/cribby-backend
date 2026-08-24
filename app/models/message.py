@@ -40,6 +40,14 @@ class Conversation(Base):
         back_populates="conversation", order_by="Message.created_at"
     )
 
+    @property
+    def counterpart_user_id(self) -> int | None:
+        """The other participant's user id, when there is a real User on the other end
+        (roommate-kind only — landlords aren't User-backed accounts yet)."""
+        if self.kind == "roommate" and self.roommate_profile is not None:
+            return self.roommate_profile.user_id
+        return None
+
 
 class Message(Base):
     __tablename__ = "messages"

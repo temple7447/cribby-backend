@@ -35,6 +35,7 @@ class Listing(Base):
     verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hot: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     video: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     grad: Mapped[str] = mapped_column(
         String(50), nullable=False

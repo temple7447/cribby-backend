@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -37,8 +37,7 @@ class RoommateProfile(Base):
     looking_for: Mapped[str] = mapped_column(Text, default="", nullable=False)
     preferred_areas: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
 
-    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    # live | paused
+    # live | paused | under_review | removed
     visibility: Mapped[str] = mapped_column(String(20), default="live", nullable=False)
 
     emoji: Mapped[str] = mapped_column(String(8), nullable=False)
@@ -47,3 +46,7 @@ class RoommateProfile(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="roommate_profile")
+
+    @property
+    def verified(self) -> bool:
+        return self.user is not None and self.user.verification_status == "verified"

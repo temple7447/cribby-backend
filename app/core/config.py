@@ -24,5 +24,12 @@ class Settings(BaseSettings):
         "http://localhost:19006",
     ]
 
+    # Email (.edu verification codes) — via Resend. If RESEND_API_KEY is unset, the code is
+    # logged to the console instead of sent, so local dev works with no credentials.
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "Cribby <onboarding@resend.dev>"
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 30
+    EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
+
 
 settings = Settings()

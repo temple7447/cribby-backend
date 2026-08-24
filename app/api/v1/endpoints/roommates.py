@@ -9,6 +9,9 @@ from app.schemas.roommate import RoommateProfileCreate, RoommateProfileRead, Roo
 
 router = APIRouter(prefix="/roommates", tags=["roommates"])
 
+_VISIBLE_STATES = {"live", "paused"}
+_MODERATED_STATES = {"under_review", "removed"}
+
 
 @router.get("", response_model=list[RoommateProfileRead])
 async def list_roommates(db: AsyncSession = Depends(get_db)) -> list[RoommateProfileRead]:
@@ -28,12 +31,17 @@ async def create_roommate_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RoommateProfileRead:
+    if current_user.verification_status != "verified":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify your student email to create a roommate profile",
+        )
     existing = await crud.roommate.get_by_user_id(db, current_user.id)
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Profile already exists"
         )
-    return await crud.roommate.create_for_user(db, payload, current_user.id)
+    return await crud.roommate.create_for_user(db, payload, current_user)
 
 
 @router.patch("/me", response_model=RoommateProfileRead)
@@ -45,17 +53,28 @@ async def update_my_roommate_profile(
     profile = await crud.roommate.get_by_user_id(db, current_user.id)
     if profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No roommate profile yet")
+
+    if payload.visibility is not None:
+        if payload.visibility not in _VISIBLE_STATES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid visibility value")
+        if profile.visibility in _MODERATED_STATES:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "This profile is under review and its visibility can't be changed",
+            )
+
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
+    profile.user = current_user
     return profile
 
 
 @router.get("/{roommate_id}", response_model=RoommateProfileRead)
 async def get_roommate(roommate_id: int, db: AsyncSession = Depends(get_db)) -> RoommateProfileRead:
-    result = await crud.roommate.get(db, roommate_id)
+    result = await crud.roommate.get_with_user(db, roommate_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Roommate profile not found"
