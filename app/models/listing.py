@@ -42,6 +42,9 @@ class Listing(Base):
     )  # gradient key, e.g. "from-coral to-sunshine"
     emoji: Mapped[str] = mapped_column(String(8), nullable=False)
     amenities: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    # Each entry: {"id": uuid4 str, "url": str, "public_id": str (Cloudinary),
+    # "alt": str, "uploaded_at": ISO datetime str}
+    photos: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
 
     landlord_name: Mapped[str] = mapped_column(String(100), default="Sandra", nullable=False)
     landlord_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

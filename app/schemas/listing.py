@@ -3,6 +3,16 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
+class ListingPhoto(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    url: str
+    public_id: str
+    alt: str
+    uploaded_at: datetime
+
+
 class ListingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -22,6 +32,7 @@ class ListingRead(BaseModel):
     grad: str
     emoji: str
     amenities: list[str]
+    photos: list[ListingPhoto]
     landlord_name: str
     landlord_verified: bool
     landlord_response_rate: int

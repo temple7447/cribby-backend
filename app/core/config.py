@@ -31,5 +31,12 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 30
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
 
+    # Listing photo storage — Cloudinary. If CLOUDINARY_CLOUD_NAME is unset,
+    # photo upload endpoints return 503 instead of crashing, so local dev
+    # works with zero setup.
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
 
 settings = Settings()
