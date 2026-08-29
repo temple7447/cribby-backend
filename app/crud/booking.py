@@ -20,9 +20,8 @@ class CRUDBooking(CRUDBase[Booking, BookingCreate]):
             guarantor_email=obj_in.guarantor_email,
             guarantor_status="invited" if obj_in.guarantor_email else "none",
             message_to_landlord=obj_in.message_to_landlord,
-            # demo landlords approve immediately so the confirmation checklist has signal
-            status="approved",
-            landlord_approved=True,
+            status="pending",
+            landlord_approved=False,
         )
         db.add(booking)
         await db.commit()
@@ -47,6 +46,34 @@ class CRUDBooking(CRUDBase[Booking, BookingCreate]):
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_with_relations(self, db: AsyncSession, id: int) -> Booking | None:
+        """Admin lookup — not scoped to a particular user, unlike get_for_user."""
+        stmt = (
+            select(Booking)
+            .where(Booking.id == id)
+            .options(selectinload(Booking.listing), selectinload(Booking.user))
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list_pending(self, db: AsyncSession) -> list[Booking]:
+        stmt = (
+            select(Booking)
+            .where(Booking.status == "pending")
+            .options(selectinload(Booking.listing), selectinload(Booking.user))
+            .order_by(Booking.created_at.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def decide(self, db: AsyncSession, booking: Booking, new_status: str) -> Booking:
+        booking.status = new_status
+        booking.landlord_approved = new_status == "approved"
+        db.add(booking)
+        await db.commit()
+        await db.refresh(booking, attribute_names=["listing", "user"])
+        return booking
 
 
 booking = CRUDBooking(Booking)

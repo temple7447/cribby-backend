@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
-from app.api.deps import get_current_user
+from app.api.deps import get_current_admin_user, get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.booking import BookingCreate, BookingRead
+from app.schemas.booking import BookingAdminRead, BookingCreate, BookingDecision, BookingRead
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -29,6 +29,16 @@ async def create_booking(
     return await crud.booking.create_for_user(db, payload, current_user.id)
 
 
+# Registered before "/{booking_id}" — FastAPI matches routes in declaration
+# order, and "pending" would otherwise fail int-parsing as a booking_id.
+@router.get("/pending", response_model=list[BookingAdminRead])
+async def list_pending_bookings(
+    _admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[BookingAdminRead]:
+    return await crud.booking.list_pending(db)
+
+
 @router.get("/{booking_id}", response_model=BookingRead)
 async def get_booking(
     booking_id: int,
@@ -39,3 +49,21 @@ async def get_booking(
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
     return result
+
+
+@router.patch("/{booking_id}", response_model=BookingRead)
+async def decide_booking(
+    booking_id: int,
+    payload: BookingDecision,
+    _admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> BookingRead:
+    booking = await crud.booking.get_with_relations(db, booking_id)
+    if booking is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+    if booking.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Booking is already {booking.status}, not pending",
+        )
+    return await crud.booking.decide(db, booking, payload.status)

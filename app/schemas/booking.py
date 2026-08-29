@@ -1,8 +1,10 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.schemas.listing import ListingRead
+from app.schemas.user import UserRead
 
 
 class BookingCreate(BaseModel):
@@ -34,3 +36,15 @@ class BookingRead(BaseModel):
     keys_collected: bool
     created_at: datetime
     listing: ListingRead
+
+
+class BookingDecision(BaseModel):
+    status: Literal["approved", "declined"]
+
+
+class BookingAdminRead(BookingRead):
+    """Same as BookingRead plus the requesting student's profile, for the
+    admin pending-bookings review screen. Field is named `user` (not
+    `student`) to match Booking.user — from_attributes maps by name."""
+
+    user: UserRead
