@@ -24,6 +24,7 @@ class UserRead(BaseModel):
     school: str
     avatar_emoji: str
     verification_status: str
+    is_admin: bool
     created_at: datetime
 
 
