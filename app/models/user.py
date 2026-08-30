@@ -34,6 +34,14 @@ class User(Base):
     verification_code_last_sent_at: Mapped[datetime | None] = mapped_column(
         UTCDateTime, nullable=True
     )
+    # Same shape as the verification code fields above, for the forgot-password flow.
+    password_reset_code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    password_reset_code_expires_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True
+    )
+    password_reset_code_last_sent_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True
+    )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 

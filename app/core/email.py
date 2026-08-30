@@ -56,6 +56,21 @@ def send_booking_request_email(
     )
 
 
+def send_password_reset_email(to_email: str, code: str) -> None:
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set — password reset code for %s: %s", to_email, code)
+        return
+    _send(
+        to_email,
+        "Reset your Cribby password",
+        (
+            f"<p>Your password reset code is <strong>{code}</strong>.</p>"
+            f"<p>It expires in {settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutes. "
+            "If you didn't request this, you can safely ignore this email.</p>"
+        ),
+    )
+
+
 def send_booking_decision_email(student_email: str, listing_title: str, status: str) -> None:
     verb = "approved" if status == "approved" else "rejected"
     _send(

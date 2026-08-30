@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "Cribby <onboarding@resend.dev>"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_MINUTES: int = 30
     EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS: int = 60
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+    PASSWORD_RESET_RESEND_COOLDOWN_SECONDS: int = 60
 
     # Listing photo storage — Cloudinary. If CLOUDINARY_CLOUD_NAME is unset,
     # photo upload endpoints return 503 instead of crashing, so local dev

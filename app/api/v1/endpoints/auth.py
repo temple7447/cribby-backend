@@ -7,16 +7,24 @@ from starlette.concurrency import run_in_threadpool
 from app import crud
 from app.api.deps import get_current_user
 from app.core.config import settings
-from app.core.email import send_verification_email
+from app.core.email import send_password_reset_email, send_verification_email
 from app.core.security import (
     create_access_token,
     generate_verification_code,
+    hash_password,
     hash_verification_code,
 )
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import Token
-from app.schemas.user import UserCreate, UserLogin, UserRead, VerifyConfirmRequest
+from app.schemas.user import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    UserCreate,
+    UserLogin,
+    UserRead,
+    VerifyConfirmRequest,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -113,3 +121,68 @@ async def confirm_verification(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_204_NO_CONTENT)
+async def request_password_reset(
+    payload: PasswordResetRequest, db: AsyncSession = Depends(get_db)
+) -> None:
+    """Unauthenticated by design — this is how you get back in when you can't
+    log in. Always responds 204 regardless of whether the account exists, the
+    cooldown is active, or the email send fails: surfacing any of those
+    asymmetrically would let someone enumerate registered emails. Contrast
+    with /verify/request, which is authenticated and already knows the
+    account exists, so it can safely report failures directly."""
+    user = await crud.user.get_by_email(db, payload.email)
+    if user is None:
+        return
+
+    now = datetime.now(timezone.utc)
+    if user.password_reset_code_last_sent_at is not None:
+        elapsed = (now - user.password_reset_code_last_sent_at).total_seconds()
+        if elapsed < settings.PASSWORD_RESET_RESEND_COOLDOWN_SECONDS:
+            return
+
+    code = generate_verification_code()
+    try:
+        await run_in_threadpool(send_password_reset_email, user.email, code)
+    except Exception:
+        return
+
+    user.password_reset_code_hash = hash_verification_code(code)
+    user.password_reset_code_expires_at = now + timedelta(
+        minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+    )
+    user.password_reset_code_last_sent_at = now
+    db.add(user)
+    await db.commit()
+
+
+@router.post("/password-reset/confirm", response_model=Token)
+async def confirm_password_reset(
+    payload: PasswordResetConfirm, db: AsyncSession = Depends(get_db)
+) -> Token:
+    invalid = HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired code")
+
+    user = await crud.user.get_by_email(db, payload.email)
+    if (
+        user is None
+        or user.password_reset_code_hash is None
+        or user.password_reset_code_expires_at is None
+    ):
+        raise invalid
+    if datetime.now(timezone.utc) > user.password_reset_code_expires_at:
+        raise invalid
+    if hash_verification_code(payload.code.strip()) != user.password_reset_code_hash:
+        raise invalid
+
+    user.hashed_password = hash_password(payload.new_password)
+    user.password_reset_code_hash = None
+    user.password_reset_code_expires_at = None
+    user.password_reset_code_last_sent_at = None
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    token = create_access_token(subject=user.email)
+    return Token(access_token=token, user=user)
