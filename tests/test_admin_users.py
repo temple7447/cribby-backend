@@ -23,6 +23,88 @@ async def _make_admin(db_session, user_id: int) -> None:
     await db_session.commit()
 
 
+async def _create_listing(db_session) -> int:
+    listing = Listing(
+        title="Cozy studio",
+        type="Studio",
+        price_per=800,
+        total=800,
+        deposit=800,
+        walk=5,
+        grad="from-coral to-sunshine",
+        emoji="🏠",
+    )
+    db_session.add(listing)
+    await db_session.commit()
+    await db_session.refresh(listing)
+    return listing.id
+
+
+async def test_user_detail_requires_admin(client):
+    token, other = await _signup(client, "plain2@gmail.com")
+    res = await client.get(f"/api/v1/users/{other['id']}", headers=_auth_headers(token))
+    assert res.status_code == 403
+
+
+async def test_user_detail_404_for_unknown_user(client, db_session):
+    admin_token, admin_user = await _signup(client, "admin2@gmail.com")
+    await _make_admin(db_session, admin_user["id"])
+    res = await client.get("/api/v1/users/999999", headers=_auth_headers(admin_token))
+    assert res.status_code == 404
+
+
+async def test_user_detail_includes_bookings_profile_and_reports(client, db_session):
+    admin_token, admin_user = await _signup(client, "admin3@gmail.com")
+    await _make_admin(db_session, admin_user["id"])
+    student_token, student = await _signup(client, "student3@gmail.com")
+    student_row = (
+        await db_session.execute(select(User).where(User.id == student["id"]))
+    ).scalar_one()
+    student_row.verification_status = "verified"
+    await db_session.commit()
+
+    listing_id = await _create_listing(db_session)
+    booking_res = await client.post(
+        "/api/v1/bookings",
+        headers=_auth_headers(student_token),
+        json={"listing_id": listing_id, "move_in_date": "2026-09-01", "lease_months": 12},
+    )
+    assert booking_res.status_code == 201, booking_res.text
+
+    profile_res = await client.post(
+        "/api/v1/roommates",
+        headers=_auth_headers(student_token),
+        json={
+            "name": "Zoe",
+            "age": 20,
+            "school": "State University",
+            "year": "Sophomore",
+            "budget_min": 500,
+            "budget_max": 900,
+            "move_in_date": "Aug 1",
+        },
+    )
+    assert profile_res.status_code == 201, profile_res.text
+
+    report_res = await client.post(
+        "/api/v1/reports",
+        headers=_auth_headers(admin_token),
+        json={"target_type": "user", "target_id": student["id"], "reason": "spam"},
+    )
+    assert report_res.status_code == 201, report_res.text
+
+    detail = await client.get(f"/api/v1/users/{student['id']}", headers=_auth_headers(admin_token))
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["user"]["email"] == "student3@gmail.com"
+    assert len(body["bookings"]) == 1
+    assert body["bookings"][0]["listing"]["id"] == listing_id
+    assert body["roommate_profile"]["name"] == "Zoe"
+    assert body["reports_filed"] == []
+    assert len(body["reports_against"]) == 1
+    assert body["reports_against"][0]["reporter_email"] == "admin3@gmail.com"
+
+
 async def test_list_users_requires_admin(client):
     token, _ = await _signup(client, "plain@gmail.com")
     res = await client.get("/api/v1/users", headers=_auth_headers(token))

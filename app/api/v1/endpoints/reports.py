@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.api.deps import get_current_admin_user, get_current_user
 from app.db.session import get_db
-from app.models.report import Report
 from app.models.user import User
 from app.schemas.report import (
     REPORT_REASONS,
@@ -18,27 +17,6 @@ from app.schemas.report import (
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-
-
-async def _enrich(db: AsyncSession, report: Report) -> ReportRead:
-    """Resolves reporter_email + a human-readable target_label so a moderator
-    UI can render a report without N follow-up lookups per row. Best-effort —
-    a target/reporter that no longer exists (deleted account, etc.) just
-    leaves the label blank rather than failing the whole request."""
-    read = ReportRead.model_validate(report)
-    reporter = await crud.user.get(db, report.reporter_id)
-    read.reporter_email = reporter.email if reporter else None
-
-    if report.target_type == "listing":
-        target = await crud.listing.get(db, report.target_id)
-        read.target_label = target.title if target else None
-    elif report.target_type == "roommate_profile":
-        target = await crud.roommate.get(db, report.target_id)
-        read.target_label = target.name if target else None
-    else:  # "user"
-        target = await crud.user.get(db, report.target_id)
-        read.target_label = target.email if target else None
-    return read
 
 
 @router.post("", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
@@ -74,7 +52,7 @@ async def create_report(
         db.add(target)
         await db.commit()
 
-    return await _enrich(db, report)
+    return await crud.report.enrich(db, report)
 
 
 @router.get("", response_model=list[ReportRead])
@@ -86,7 +64,7 @@ async def list_reports(
     if status_filter is not None and status_filter not in REPORT_STATUSES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid status")
     reports = await crud.report.list_by_status(db, status_filter)
-    return [await _enrich(db, r) for r in reports]
+    return [await crud.report.enrich(db, r) for r in reports]
 
 
 @router.patch("/{report_id}", response_model=ReportRead)
@@ -130,4 +108,4 @@ async def update_report(
     db.add(report)
     await db.commit()
     await db.refresh(report)
-    return await _enrich(db, report)
+    return await crud.report.enrich(db, report)

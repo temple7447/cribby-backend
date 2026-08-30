@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import crud
 from app.api.deps import get_current_admin_user, get_current_user
 from app.core.security import verify_password
 from app.db.session import get_db
@@ -12,6 +13,7 @@ from app.models.message import Conversation, Message
 from app.models.report import Report
 from app.models.roommate import RoommateProfile
 from app.models.user import User
+from app.schemas.admin import AdminUserDetail
 from app.schemas.user import AccountDeleteRequest, SetAdminRequest, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -97,6 +99,38 @@ async def list_users(
 ) -> list[User]:
     result = await db.execute(select(User).order_by(User.created_at.desc()))
     return list(result.scalars().all())
+
+
+@router.get("/{user_id}", response_model=AdminUserDetail)
+async def get_user_detail(
+    user_id: int,
+    _admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> AdminUserDetail:
+    """Everything about one account in a single call — bookings, roommate
+    profile, and reports both filed by and against them — so the dashboard's
+    user detail page doesn't need four separate round trips."""
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    bookings = await crud.booking.get_multi_for_user(db, user_id)
+
+    profile_result = await db.execute(
+        select(RoommateProfile).where(RoommateProfile.user_id == user_id)
+    )
+    profile = profile_result.scalar_one_or_none()
+
+    filed = await crud.report.list_filed_by(db, user_id)
+    against = await crud.report.list_against_user(db, user_id)
+
+    return AdminUserDetail(
+        user=target,
+        bookings=bookings,
+        roommate_profile=profile,
+        reports_filed=[await crud.report.enrich(db, r) for r in filed],
+        reports_against=[await crud.report.enrich(db, r) for r in against],
+    )
 
 
 @router.patch("/{user_id}/admin", response_model=UserRead)
