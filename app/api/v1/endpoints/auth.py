@@ -59,10 +59,6 @@ async def request_verification(
 ) -> None:
     if current_user.verification_status == "verified":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Already verified")
-    if not current_user.email.lower().endswith(".edu"):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Only .edu email addresses are eligible for verification"
-        )
 
     now = datetime.now(timezone.utc)
     if current_user.verification_code_last_sent_at is not None:

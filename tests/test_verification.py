@@ -25,10 +25,17 @@ async def test_signup_creates_unverified_user(client):
     assert user["verification_status"] == "unverified"
 
 
-async def test_request_verification_rejects_non_edu_email(client):
+async def test_request_verification_accepts_any_email_domain(client, monkeypatch):
+    # .edu isn't a realistic constraint outside the US (e.g. Nigerian universities
+    # don't issue them), so verification accepts any address — gmail included.
+    captured = {}
+    monkeypatch.setattr(
+        auth_endpoint, "send_verification_email", lambda to_email, code: captured.update(email=to_email, code=code)
+    )
     token, _ = await _signup(client, email="student@gmail.com")
     res = await client.post("/api/v1/auth/verify/request", headers=_auth_headers(token))
-    assert res.status_code == 400
+    assert res.status_code == 204, res.text
+    assert captured["email"] == "student@gmail.com"
 
 
 async def test_request_verification_and_confirm_succeeds(client, monkeypatch):
