@@ -29,6 +29,7 @@ class ListingRead(BaseModel):
     verified: bool
     hot: bool
     video: bool
+    is_hidden: bool
     grad: str
     emoji: str
     amenities: list[str]
