@@ -31,3 +31,7 @@ class ReportRead(BaseModel):
     created_at: datetime
     resolved_at: datetime | None
     resolved_by_id: int | None
+    # Resolved server-side so a moderator UI doesn't have to make N follow-up
+    # calls per report just to know what/who is actually being reported.
+    reporter_email: str | None = None
+    target_label: str | None = None

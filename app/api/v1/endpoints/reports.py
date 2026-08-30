@@ -20,12 +20,33 @@ from app.schemas.report import (
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
+async def _enrich(db: AsyncSession, report: Report) -> ReportRead:
+    """Resolves reporter_email + a human-readable target_label so a moderator
+    UI can render a report without N follow-up lookups per row. Best-effort —
+    a target/reporter that no longer exists (deleted account, etc.) just
+    leaves the label blank rather than failing the whole request."""
+    read = ReportRead.model_validate(report)
+    reporter = await crud.user.get(db, report.reporter_id)
+    read.reporter_email = reporter.email if reporter else None
+
+    if report.target_type == "listing":
+        target = await crud.listing.get(db, report.target_id)
+        read.target_label = target.title if target else None
+    elif report.target_type == "roommate_profile":
+        target = await crud.roommate.get(db, report.target_id)
+        read.target_label = target.name if target else None
+    else:  # "user"
+        target = await crud.user.get(db, report.target_id)
+        read.target_label = target.email if target else None
+    return read
+
+
 @router.post("", response_model=ReportRead, status_code=status.HTTP_201_CREATED)
 async def create_report(
     payload: ReportCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Report:
+) -> ReportRead:
     if payload.target_type not in REPORT_TARGET_TYPES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid target_type")
     if payload.reason not in REPORT_REASONS:
@@ -53,7 +74,7 @@ async def create_report(
         db.add(target)
         await db.commit()
 
-    return report
+    return await _enrich(db, report)
 
 
 @router.get("", response_model=list[ReportRead])
@@ -61,10 +82,11 @@ async def list_reports(
     status_filter: str | None = Query(None, alias="status"),
     admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
-) -> list[Report]:
+) -> list[ReportRead]:
     if status_filter is not None and status_filter not in REPORT_STATUSES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid status")
-    return await crud.report.list_by_status(db, status_filter)
+    reports = await crud.report.list_by_status(db, status_filter)
+    return [await _enrich(db, r) for r in reports]
 
 
 @router.patch("/{report_id}", response_model=ReportRead)
@@ -73,7 +95,7 @@ async def update_report(
     payload: ReportUpdate,
     admin: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db),
-) -> Report:
+) -> ReportRead:
     if payload.status not in REPORT_STATUSES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid status")
     report = await crud.report.get(db, report_id)
@@ -108,4 +130,4 @@ async def update_report(
     db.add(report)
     await db.commit()
     await db.refresh(report)
-    return report
+    return await _enrich(db, report)

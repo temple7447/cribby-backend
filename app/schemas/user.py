@@ -52,3 +52,7 @@ class AccountDeleteRequest(BaseModel):
     # Re-confirming the password protects against an unattended/left-open
     # session being used to instantly and irreversibly delete the account.
     password: str
+
+
+class SetAdminRequest(BaseModel):
+    is_admin: bool

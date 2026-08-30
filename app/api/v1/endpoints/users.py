@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_admin_user, get_current_user
 from app.core.security import verify_password
 from app.db.session import get_db
 from app.models.block import Block
@@ -12,7 +12,7 @@ from app.models.message import Conversation, Message
 from app.models.report import Report
 from app.models.roommate import RoommateProfile
 from app.models.user import User
-from app.schemas.user import AccountDeleteRequest, UserRead, UserUpdate
+from app.schemas.user import AccountDeleteRequest, SetAdminRequest, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -88,3 +88,31 @@ async def delete_me(
 
     await db.delete(current_user)
     await db.commit()
+
+
+@router.get("", response_model=list[UserRead])
+async def list_users(
+    _admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[User]:
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    return list(result.scalars().all())
+
+
+@router.patch("/{user_id}/admin", response_model=UserRead)
+async def set_admin(
+    user_id: int,
+    payload: SetAdminRequest,
+    admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    if user_id == admin.id and not payload.is_admin:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can't remove your own admin access")
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    target.is_admin = payload.is_admin
+    db.add(target)
+    await db.commit()
+    await db.refresh(target)
+    return target
