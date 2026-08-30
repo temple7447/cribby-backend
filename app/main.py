@@ -12,6 +12,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    # Testing the Expo web build from a physical phone means the frontend is
+    # loaded from the dev machine's LAN IP, not localhost — and that IP
+    # changes across networks/DHCP renewals. Matching any private-network
+    # address on any port covers that without needing to hardcode/update an
+    # IP here each time; this only affects local dev origins, never a real
+    # public one.
+    allow_origin_regex=r"^http://(192\.168|10\.\d{1,3}|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}:\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
