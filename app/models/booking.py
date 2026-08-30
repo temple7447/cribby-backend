@@ -21,7 +21,7 @@ class Booking(Base):
 
     move_in_date: Mapped[date] = mapped_column(Date, nullable=False)
     lease_months: Mapped[int] = mapped_column(Integer, default=12, nullable=False)
-    # pending | approved | declined
+    # pending | approved | rejected | canceled
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
 
     guarantor_name: Mapped[str | None] = mapped_column(String(100), nullable=True)

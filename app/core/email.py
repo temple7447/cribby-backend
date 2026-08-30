@@ -28,3 +28,39 @@ def send_verification_email(to_email: str, code: str) -> None:
             ),
         }
     )
+
+
+def _send(to_email: str, subject: str, html: str) -> None:
+    if not settings.RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY not set — email to %s not sent: %s", to_email, subject)
+        return
+    resend.api_key = settings.RESEND_API_KEY
+    resend.Emails.send(
+        {"from": settings.EMAIL_FROM, "to": [to_email], "subject": subject, "html": html}
+    )
+
+
+def send_booking_request_email(
+    admin_email: str, student_name: str, listing_title: str, move_in_date: str
+) -> None:
+    """Notifies an admin (standing in for the listing's landlord — there's no
+    real landlord-account model yet) that a new booking needs review."""
+    _send(
+        admin_email,
+        f"New booking request: {listing_title}",
+        (
+            f"<p><strong>{student_name}</strong> requested to book "
+            f"<strong>{listing_title}</strong>, move-in {move_in_date}.</p>"
+            "<p>Review it in the Cribby app under Profile → Pending bookings.</p>"
+        ),
+    )
+
+
+def send_booking_decision_email(student_email: str, listing_title: str, status: str) -> None:
+    verb = "approved" if status == "approved" else "rejected"
+    _send(
+        student_email,
+        f"Your booking request was {verb}",
+        f"<p>Your request for <strong>{listing_title}</strong> was <strong>{verb}</strong>.</p>"
+        "<p>Check the app for details and next steps.</p>",
+    )

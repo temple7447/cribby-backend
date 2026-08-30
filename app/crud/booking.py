@@ -37,13 +37,17 @@ class CRUDBooking(CRUDBase[Booking, BookingCreate]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_multi_for_user(self, db: AsyncSession, user_id: int) -> list[Booking]:
+    async def get_multi_for_user(
+        self, db: AsyncSession, user_id: int, status: str | None = None
+    ) -> list[Booking]:
         stmt = (
             select(Booking)
             .where(Booking.user_id == user_id)
             .options(selectinload(Booking.listing))
             .order_by(Booking.created_at.desc())
         )
+        if status is not None:
+            stmt = stmt.where(Booking.status == status)
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -73,6 +77,13 @@ class CRUDBooking(CRUDBase[Booking, BookingCreate]):
         db.add(booking)
         await db.commit()
         await db.refresh(booking, attribute_names=["listing", "user"])
+        return booking
+
+    async def cancel(self, db: AsyncSession, booking: Booking) -> Booking:
+        booking.status = "canceled"
+        db.add(booking)
+        await db.commit()
+        await db.refresh(booking, attribute_names=["listing"])
         return booking
 
 

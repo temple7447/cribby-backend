@@ -30,5 +30,9 @@ class CRUDUser(CRUDBase[User, UserCreate]):
             return None
         return user
 
+    async def list_admin_emails(self, db: AsyncSession) -> list[str]:
+        result = await db.execute(select(User.email).where(User.is_admin == True))  # noqa: E712
+        return list(result.scalars().all())
+
 
 user = CRUDUser(User)

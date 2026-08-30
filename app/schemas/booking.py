@@ -39,7 +39,7 @@ class BookingRead(BaseModel):
 
 
 class BookingDecision(BaseModel):
-    status: Literal["approved", "declined"]
+    status: Literal["approved", "rejected"]
 
 
 class BookingAdminRead(BookingRead):
