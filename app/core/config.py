@@ -17,11 +17,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week — mobile app, not a browser session
 
-    # CORS — Expo dev server (web) + Metro default ports
+    # CORS — Expo dev server (web) + Metro default ports, plus the admin dashboard
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:8081",
         "http://localhost:8099",
         "http://localhost:19006",
+        "http://localhost:5180",
+        "https://admin.cribby.space",
     ]
 
     # Email (.edu verification codes) — via Resend. If RESEND_API_KEY is unset, the code is
