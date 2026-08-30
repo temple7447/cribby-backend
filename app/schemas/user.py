@@ -46,3 +46,9 @@ class PasswordResetConfirm(BaseModel):
     email: EmailStr
     code: str
     new_password: str = Field(min_length=6)
+
+
+class AccountDeleteRequest(BaseModel):
+    # Re-confirming the password protects against an unattended/left-open
+    # session being used to instantly and irreversibly delete the account.
+    password: str
