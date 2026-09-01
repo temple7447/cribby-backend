@@ -13,6 +13,7 @@ class BlockedUserSummary(BaseModel):
     id: int
     name: str
     avatar_emoji: str
+    avatar_url: str | None
 
 
 class BlockRead(BaseModel):
