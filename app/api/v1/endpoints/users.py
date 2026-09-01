@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.api.deps import get_current_admin_user, get_current_user
 from app.core.security import verify_password
+from app.core.storage import delete_avatar_photo, upload_avatar_photo
 from app.db.session import get_db
 from app.models.block import Block
 from app.models.booking import Booking
@@ -90,6 +91,48 @@ async def delete_me(
 
     await db.delete(current_user)
     await db.commit()
+
+
+@router.post("/me/avatar", response_model=UserRead)
+async def upload_my_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Replaces the profile photo. Falls back to avatar_emoji everywhere
+    this is unset — uploading one just switches which the app renders."""
+    uploaded = await upload_avatar_photo(file, current_user.id)
+    old_public_id = current_user.avatar_public_id
+
+    current_user.avatar_url = uploaded["url"]
+    current_user.avatar_public_id = uploaded["public_id"]
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+
+    if old_public_id:
+        delete_avatar_photo(old_public_id)
+
+    return current_user
+
+
+@router.delete("/me/avatar", response_model=UserRead)
+async def delete_my_avatar(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Removes the profile photo, reverting to the avatar_emoji fallback."""
+    old_public_id = current_user.avatar_public_id
+    current_user.avatar_url = None
+    current_user.avatar_public_id = None
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+
+    if old_public_id:
+        delete_avatar_photo(old_public_id)
+
+    return current_user
 
 
 @router.get("", response_model=list[UserRead])

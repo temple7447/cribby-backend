@@ -23,6 +23,7 @@ class UserRead(BaseModel):
     name: str
     school: str
     avatar_emoji: str
+    avatar_url: str | None
     verification_status: str
     is_admin: bool
     created_at: datetime

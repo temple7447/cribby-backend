@@ -22,6 +22,11 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     school: Mapped[str] = mapped_column(String(150), default="State University", nullable=False)
     avatar_emoji: Mapped[str] = mapped_column(String(8), default="🎓", nullable=False)
+    # Real profile photo, optional — falls back to avatar_emoji everywhere it's
+    # unset. public_id is Cloudinary's handle, needed to delete the asset when
+    # the photo is replaced or removed.
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_public_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # "unverified" | "verified"
     verification_status: Mapped[str] = mapped_column(
         String(20), default="unverified", nullable=False
