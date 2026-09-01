@@ -13,6 +13,27 @@ class ListingPhoto(BaseModel):
     uploaded_at: datetime
 
 
+class ListingCreate(BaseModel):
+    title: str
+    type: str  # Studio | Shared 4BR | 1BR | 2BR ...
+    price_per: int
+    total: int
+    utilities_monthly: int = 45
+    deposit: int
+    walk: int
+    rating: float = 0
+    reviews: int = 0
+    verified: bool = False
+    hot: bool = False
+    video: bool = False
+    grad: str = "from-coral to-sunshine"
+    emoji: str = "🏠"
+    amenities: list[str] = []
+    landlord_name: str = "Sandra"
+    landlord_verified: bool = True
+    landlord_response_rate: int = 95
+
+
 class ListingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

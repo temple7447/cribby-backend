@@ -10,7 +10,7 @@ from app.api.deps import get_current_admin_user
 from app.core.storage import delete_listing_photo, upload_listing_photo
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.listing import ListingRead
+from app.schemas.listing import ListingCreate, ListingRead
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
@@ -36,9 +36,19 @@ async def get_listing(listing_id: int, db: AsyncSession = Depends(get_db)) -> Li
     return result
 
 
-# Photo management is admin-only for now — listings aren't owned by a User
-# account yet (landlord_name is free text), so there's no "is this my
-# listing" check to make. Revisit once real landlord accounts exist.
+# Creating and photo management are admin-only for now — listings aren't
+# owned by a User account yet (landlord_name is free text), so there's no
+# "is this my listing" check to make. Revisit once real landlord accounts
+# exist.
+
+
+@router.post("", response_model=ListingRead, status_code=status.HTTP_201_CREATED)
+async def create_listing(
+    payload: ListingCreate,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
+) -> ListingRead:
+    return await crud.listing.create(db, payload.model_dump())
 
 
 @router.post("/{listing_id}/photos", response_model=ListingRead)

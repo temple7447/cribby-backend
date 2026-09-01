@@ -56,6 +56,43 @@ def _fake_cloudinary(monkeypatch):
     monkeypatch.setattr(storage.cloudinary.uploader, "destroy", fake_destroy)
 
 
+async def test_create_listing_requires_admin(client):
+    token, _ = await _signup(client, "plain5@gmail.com")
+    res = await client.post(
+        "/api/v1/listings",
+        headers=_auth_headers(token),
+        json={"title": "Test place", "type": "Studio", "price_per": 500, "total": 500, "deposit": 500, "walk": 10},
+    )
+    assert res.status_code == 403
+
+
+async def test_create_listing(client, db_session):
+    token, user = await _signup(client, "admin5@gmail.com")
+    await _make_admin(db_session, user["id"])
+
+    res = await client.post(
+        "/api/v1/listings",
+        headers=_auth_headers(token),
+        json={
+            "title": "Riverside Studio",
+            "type": "Studio",
+            "price_per": 700,
+            "total": 700,
+            "deposit": 700,
+            "walk": 12,
+            "emoji": "🏙️",
+        },
+    )
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["title"] == "Riverside Studio"
+    assert body["is_hidden"] is False
+    assert body["photos"] == []
+
+    listed = await client.get("/api/v1/listings")
+    assert any(l["title"] == "Riverside Studio" for l in listed.json())
+
+
 async def test_upload_photo_requires_admin(client, db_session, monkeypatch):
     _fake_cloudinary(monkeypatch)
     token, user = await _signup(client, "student@stateuniversity.edu")
