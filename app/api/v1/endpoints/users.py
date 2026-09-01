@@ -15,7 +15,13 @@ from app.models.report import Report
 from app.models.roommate import RoommateProfile
 from app.models.user import User
 from app.schemas.admin import AdminUserDetail
-from app.schemas.user import AccountDeleteRequest, SetAdminRequest, UserRead, UserUpdate
+from app.schemas.user import (
+    AccountDeleteRequest,
+    SetAdminRequest,
+    SetSuspendedRequest,
+    UserRead,
+    UserUpdate,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -189,6 +195,25 @@ async def set_admin(
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     target.is_admin = payload.is_admin
+    db.add(target)
+    await db.commit()
+    await db.refresh(target)
+    return target
+
+
+@router.patch("/{user_id}/suspend", response_model=UserRead)
+async def set_suspended(
+    user_id: int,
+    payload: SetSuspendedRequest,
+    admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    if user_id == admin.id and payload.is_suspended:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can't suspend your own account")
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    target.is_suspended = payload.is_suspended
     db.add(target)
     await db.commit()
     await db.refresh(target)

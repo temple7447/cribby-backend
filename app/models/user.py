@@ -48,6 +48,11 @@ class User(Base):
         UTCDateTime, nullable=True
     )
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # A suspended account keeps its data but can't log in or use an existing
+    # session — enforced both at /auth/login and on every authenticated
+    # request (see get_current_user), so suspending someone mid-session cuts
+    # them off immediately rather than only blocking their next login.
+    is_suspended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 
     bookings: Mapped[list["Booking"]] = relationship(back_populates="user")

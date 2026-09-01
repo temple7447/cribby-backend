@@ -26,6 +26,7 @@ class UserRead(BaseModel):
     avatar_url: str | None
     verification_status: str
     is_admin: bool
+    is_suspended: bool
     created_at: datetime
 
 
@@ -57,3 +58,7 @@ class AccountDeleteRequest(BaseModel):
 
 class SetAdminRequest(BaseModel):
     is_admin: bool
+
+
+class SetSuspendedRequest(BaseModel):
+    is_suspended: bool

@@ -48,6 +48,11 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> Token
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
         )
+    if user.is_suspended:
+        # 403, not 401 — the credentials were correct, access is what's denied.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Your account has been suspended"
+        )
     token = create_access_token(subject=user.email)
     return Token(access_token=token, user=user)
 
