@@ -94,3 +94,25 @@ async def upload_avatar_photo(file: UploadFile, user_id: int) -> dict:
 def delete_avatar_photo(public_id: str) -> None:
     _ensure_configured()
     cloudinary.uploader.destroy(public_id)
+
+
+async def upload_roommate_banner(file: UploadFile, roommate_profile_id: int) -> dict:
+    """Validates and uploads a roommate post's cover photo, returning
+    {url, public_id}. Wide crop (not square) — this renders as a full-width
+    banner, not a circle."""
+    _ensure_configured()
+    contents = await _read_validated(file)
+    result = cloudinary.uploader.upload(
+        contents,
+        folder=f"cribby/roommate-banners/{roommate_profile_id}",
+        transformation=[
+            {"width": 1200, "height": 400, "crop": "fill", "gravity": "auto"},
+            {"quality": "auto", "fetch_format": "auto"},
+        ],
+    )
+    return {"url": result["secure_url"], "public_id": result["public_id"]}
+
+
+def delete_roommate_banner(public_id: str) -> None:
+    _ensure_configured()
+    cloudinary.uploader.destroy(public_id)

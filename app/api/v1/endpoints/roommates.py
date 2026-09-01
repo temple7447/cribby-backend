@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.api.deps import get_current_user
+from app.core.storage import delete_roommate_banner, upload_roommate_banner
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.roommate import RoommateProfileCreate, RoommateProfileRead, RoommateProfileUpdate
@@ -69,6 +70,58 @@ async def update_my_roommate_profile(
     await db.commit()
     await db.refresh(profile)
     profile.user = current_user
+    return profile
+
+
+@router.post("/me/banner", response_model=RoommateProfileRead)
+async def upload_my_roommate_banner(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RoommateProfileRead:
+    """Replaces this user's roommate post's cover photo. Self-service, no
+    admin gate — a student manages only their own post's banner."""
+    profile = await crud.roommate.get_by_user_id(db, current_user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No roommate profile yet")
+
+    uploaded = await upload_roommate_banner(file, profile.id)
+    old_public_id = profile.banner_public_id
+
+    profile.banner_url = uploaded["url"]
+    profile.banner_public_id = uploaded["public_id"]
+    db.add(profile)
+    await db.commit()
+    await db.refresh(profile)
+    profile.user = current_user
+
+    if old_public_id:
+        delete_roommate_banner(old_public_id)
+
+    return profile
+
+
+@router.delete("/me/banner", response_model=RoommateProfileRead)
+async def delete_my_roommate_banner(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RoommateProfileRead:
+    """Removes the cover photo, reverting to the emoji/gradient fallback."""
+    profile = await crud.roommate.get_by_user_id(db, current_user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No roommate profile yet")
+
+    old_public_id = profile.banner_public_id
+    profile.banner_url = None
+    profile.banner_public_id = None
+    db.add(profile)
+    await db.commit()
+    await db.refresh(profile)
+    profile.user = current_user
+
+    if old_public_id:
+        delete_roommate_banner(old_public_id)
+
     return profile
 
 

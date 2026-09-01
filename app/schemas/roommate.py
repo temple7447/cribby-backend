@@ -47,4 +47,6 @@ class RoommateProfileRead(BaseModel):
     visibility: str
     emoji: str
     grad: str
+    banner_url: str | None
+    user_avatar_url: str | None
     created_at: datetime

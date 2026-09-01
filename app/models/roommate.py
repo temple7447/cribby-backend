@@ -43,6 +43,11 @@ class RoommateProfile(Base):
     emoji: Mapped[str] = mapped_column(String(8), nullable=False)
     grad: Mapped[str] = mapped_column(String(50), nullable=False)
 
+    # Real cover photo for this post, independent of the poster's own profile
+    # photo — optional, falls back to the emoji/gradient everywhere it's unset.
+    banner_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    banner_public_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="roommate_profile")
@@ -50,3 +55,7 @@ class RoommateProfile(Base):
     @property
     def verified(self) -> bool:
         return self.user is not None and self.user.verification_status == "verified"
+
+    @property
+    def user_avatar_url(self) -> str | None:
+        return self.user.avatar_url if self.user is not None else None
