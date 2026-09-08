@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.geo import rank_by_distance
 from app.crud.base import CRUDBase
 from app.models.listing import Listing
 
@@ -14,6 +15,9 @@ class CRUDListing(CRUDBase[Listing, dict]):
         max_walk: int | None = None,
         room_type: str | None = None,
         q: str | None = None,
+        near_lat: float | None = None,
+        near_lng: float | None = None,
+        radius_km: float | None = None,
     ) -> list[Listing]:
         stmt = select(Listing).where(Listing.is_hidden == False)  # noqa: E712
         if max_price is not None:
@@ -25,7 +29,14 @@ class CRUDListing(CRUDBase[Listing, dict]):
         if q:
             stmt = stmt.where(Listing.title.ilike(f"%{q}%"))
         result = await db.execute(stmt)
-        return list(result.scalars().all())
+        listings = list(result.scalars().all())
+
+        if near_lat is None or near_lng is None:
+            return listings
+
+        # Proximity mode: sort nearest-first, stamp distance_km, drop listings
+        # with no coordinates (and anything past radius_km, if given).
+        return rank_by_distance(listings, near_lat, near_lng, radius_km=radius_km)
 
 
 listing = CRUDListing(Listing)

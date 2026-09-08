@@ -21,6 +21,8 @@ class ListingCreate(BaseModel):
     utilities_monthly: int = 45
     deposit: int
     walk: int
+    latitude: float | None = None
+    longitude: float | None = None
     rating: float = 0
     reviews: int = 0
     verified: bool = False
@@ -45,6 +47,11 @@ class ListingRead(BaseModel):
     utilities_monthly: int
     deposit: int
     walk: int
+    latitude: float | None = None
+    longitude: float | None = None
+    # Populated only on proximity searches (near_lat / near_lng); great-circle
+    # distance in km from that point to this listing.
+    distance_km: float | None = None
     rating: float
     reviews: int
     verified: bool

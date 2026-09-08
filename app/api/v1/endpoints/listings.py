@@ -21,10 +21,22 @@ async def list_listings(
     max_walk: int | None = None,
     room_type: str | None = None,
     q: str | None = None,
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> list[ListingRead]:
+    # Pass near_lat + near_lng together to sort results nearest-first and get a
+    # distance_km on each; add radius_km to also drop anything further away.
     return await crud.listing.search(
-        db, max_price=max_price, max_walk=max_walk, room_type=room_type, q=q
+        db,
+        max_price=max_price,
+        max_walk=max_walk,
+        room_type=room_type,
+        q=q,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=radius_km,
     )
 
 

@@ -29,6 +29,10 @@ class Listing(Base):
     deposit: Mapped[int] = mapped_column(Integer, nullable=False)
 
     walk: Mapped[int] = mapped_column(Integer, nullable=False)  # walk minutes to campus
+    # Geo coordinates for map display + proximity search (great-circle distance).
+    # Nullable: older listings and quick admin entries may not have them yet.
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     rating: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     reviews: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 

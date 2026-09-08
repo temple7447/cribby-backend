@@ -15,6 +15,7 @@ from app.db.session import AsyncSessionLocal
 from app.models.booking import Booking
 from app.models.listing import Listing
 from app.models.message import Conversation, Message
+from app.models.place import Place
 from app.models.roommate import RoommateProfile
 from app.models.user import User
 
@@ -29,6 +30,9 @@ AMENITIES = [
     "🚲 Bike storage",
 ]
 
+# Coordinates scattered around a campus reference point (~6.5158, 3.3898,
+# the University of Lagos, Akoka) so proximity search / map display has real
+# data to work with. Offsets roughly track the `walk` minutes.
 LISTINGS = [
     dict(
         title="Sunny Studio on Maple St",
@@ -36,6 +40,8 @@ LISTINGS = [
         price_per=890,
         total=890,
         walk=8,
+        latitude=6.5194,
+        longitude=3.3934,
         rating=4.8,
         reviews=32,
         verified=True,
@@ -49,6 +55,8 @@ LISTINGS = [
         price_per=480,
         total=1920,
         walk=12,
+        latitude=6.5099,
+        longitude=3.3951,
         rating=4.6,
         reviews=58,
         verified=True,
@@ -62,6 +70,8 @@ LISTINGS = [
         price_per=1150,
         total=1150,
         walk=15,
+        latitude=6.5241,
+        longitude=3.3831,
         rating=4.4,
         reviews=19,
         grad="from-mint to-violet",
@@ -73,6 +83,8 @@ LISTINGS = [
         price_per=620,
         total=1240,
         walk=10,
+        latitude=6.5112,
+        longitude=3.3849,
         rating=4.9,
         reviews=41,
         hot=True,
@@ -85,6 +97,8 @@ LISTINGS = [
         price_per=760,
         total=760,
         walk=20,
+        latitude=6.5261,
+        longitude=3.4001,
         rating=4.2,
         reviews=12,
         video=True,
@@ -97,6 +111,8 @@ LISTINGS = [
         price_per=540,
         total=1620,
         walk=6,
+        latitude=6.5131,
+        longitude=3.3914,
         rating=4.7,
         reviews=27,
         verified=True,
@@ -166,6 +182,47 @@ ROOMMATES = [
     ),
 ]
 
+# Points of interest around the same campus (~6.5158, 3.3898) students search
+# for — "where's the nearest pharmacy / ATM / bus stop from this listing".
+PLACES = [
+    dict(name="Akoka General Hospital", category="hospital", emoji="🏥",
+         address="12 Akoka Rd", latitude=6.5185, longitude=3.3902),
+    dict(name="Bariga Health Centre", category="clinic", emoji="🩺",
+         address="Bariga", latitude=6.5350, longitude=3.3830),
+    dict(name="MedPlus Pharmacy Yaba", category="pharmacy", emoji="💊",
+         address="Herbert Macaulay Way, Yaba", latitude=6.5145, longitude=3.3875),
+    dict(name="HealthPlus Pharmacy Akoka", category="pharmacy", emoji="💊",
+         address="St. Finbarr's Rd, Akoka", latitude=6.5205, longitude=3.3948),
+    dict(name="GTBank Akoka", category="bank", emoji="🏦",
+         address="University Rd, Akoka", latitude=6.5169, longitude=3.3925),
+    dict(name="Access Bank Yaba", category="bank", emoji="🏦",
+         address="Commercial Ave, Yaba", latitude=6.5098, longitude=3.3790),
+    dict(name="UBA ATM — Unilag Gate", category="atm", emoji="🏧",
+         address="University Main Gate", latitude=6.5162, longitude=3.3961),
+    dict(name="Yaba Market", category="market", emoji="🛒",
+         address="Yaba", latitude=6.5090, longitude=3.3775),
+    dict(name="Akoka Foodstuff Market", category="market", emoji="🛒",
+         address="Akoka", latitude=6.5220, longitude=3.3890),
+    dict(name="Sweet Sensation Akoka", category="restaurant", emoji="🍽️",
+         address="University Rd", latitude=6.5178, longitude=3.3930),
+    dict(name="Iya Basira Buka", category="restaurant", emoji="🍲",
+         address="Akoka", latitude=6.5195, longitude=3.3908),
+    dict(name="Unilag Main Gate Bus Stop", category="bus_stop", emoji="🚌",
+         address="University Rd", latitude=6.5155, longitude=3.3965),
+    dict(name="Bariga Bus Stop", category="bus_stop", emoji="🚌",
+         address="Bariga Rd", latitude=6.5360, longitude=3.3845),
+    dict(name="FitZone Gym Akoka", category="gym", emoji="🏋️",
+         address="St. Finbarr's Rd", latitude=6.5210, longitude=3.3875),
+    dict(name="CleanPro Laundry", category="laundry", emoji="🧺",
+         address="Akoka", latitude=6.5188, longitude=3.3945),
+    dict(name="Akoka Police Station", category="police", emoji="🚓",
+         address="Akoka", latitude=6.5240, longitude=3.3860),
+    dict(name="Chapel of the Healing Cross", category="worship", emoji="⛪",
+         address="Unilag campus", latitude=6.5170, longitude=3.3985),
+    dict(name="Unilag Central Mosque", category="worship", emoji="🕌",
+         address="Unilag campus", latitude=6.5175, longitude=3.3975),
+]
+
 
 async def seed() -> None:
     async with AsyncSessionLocal() as db:
@@ -183,6 +240,8 @@ async def seed() -> None:
             Listing(deposit=item["price_per"], amenities=AMENITIES, **item) for item in LISTINGS
         ]
         db.add_all(listings)
+
+        db.add_all([Place(**p) for p in PLACES])
 
         roommate_users = []
         for rm in ROOMMATES:
@@ -267,8 +326,8 @@ async def seed() -> None:
         await db.commit()
         print(
             f"Seeded: 1 primary user (maya@stateuniversity.edu / password123), "
-            f"{len(listings)} listings, {len(ROOMMATES)} roommate profiles, "
-            f"2 bookings, 2 conversations."
+            f"{len(listings)} listings, {len(PLACES)} places, "
+            f"{len(ROOMMATES)} roommate profiles, 2 bookings, 2 conversations."
         )
 
 
