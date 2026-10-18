@@ -1,9 +1,0 @@
-# build output
-/bin/
-/server
-/seed
-
-# local databases and secrets
-*.db
-*.db-journal
-.env

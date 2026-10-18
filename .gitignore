@@ -1,21 +1,10 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# build output
+/bin/
+/server
+/seed
 
-# Virtual environments
-.venv
-
-# local dev database
+# local databases and secrets
 *.db
 *.db-journal
-
-# tool caches
-.ruff_cache/
-.pytest_cache/
-
-# local secrets
 .env
+.DS_Store
