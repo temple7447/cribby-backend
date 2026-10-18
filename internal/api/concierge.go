@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"campus-backend/internal/ai"
 	"campus-backend/internal/model"
@@ -79,24 +78,8 @@ func (s *Server) conciergeChat(w http.ResponseWriter, r *http.Request) error {
 	if err := bindJSON(r, &p); err != nil {
 		return err
 	}
-	if len(p.Messages) == 0 {
-		return validationFailed(fieldError{"missing", []any{"body", "messages"}, "Field required"})
-	}
-	for i, m := range p.Messages {
-		loc := []any{"body", "messages", i}
-		if m.Role != "user" && m.Role != "assistant" {
-			return validationFailed(fieldError{"literal_error", append(loc, "role"), "Input should be 'user' or 'assistant'"})
-		}
-		if strings.TrimSpace(m.Content) == "" {
-			return validationFailed(fieldError{"string_too_short", append(loc, "content"), "Message can't be empty"})
-		}
-		if utf8.RuneCountInString(m.Content) > maxChatChars {
-			return validationFailed(fieldError{"string_too_long", append(loc, "content"),
-				fmt.Sprintf("Message must be at most %d characters", maxChatChars)})
-		}
-	}
-	if p.Messages[len(p.Messages)-1].Role != "user" {
-		return validationFailed(fieldError{"value_error", []any{"body", "messages"}, "The last message must be from the user"})
+	if err := validateChat(p.Messages); err != nil {
+		return err
 	}
 	if !s.assistant.Configured() {
 		return httpErr(http.StatusServiceUnavailable, "The AI assistant is not configured on this environment")

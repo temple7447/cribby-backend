@@ -14,6 +14,14 @@ import (
 	"time"
 )
 
+// APIError is an error response from OpenRouter (or the model provider behind it).
+type APIError struct {
+	Status  int
+	Message string
+}
+
+func (e *APIError) Error() string { return fmt.Sprintf("openrouter %d: %.300s", e.Status, e.Message) }
+
 // ErrNotConfigured is returned when no API key is set.
 var ErrNotConfigured = errors.New("ai assistant is not configured")
 
@@ -88,7 +96,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 		if out.Error != nil && out.Error.Message != "" {
 			msg = out.Error.Message
 		}
-		return "", fmt.Errorf("openrouter %s: %.300s", resp.Status, msg)
+		return "", &APIError{Status: resp.StatusCode, Message: msg}
 	}
 	if len(out.Choices) == 0 {
 		return "", errors.New("openrouter: no choices in response")

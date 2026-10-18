@@ -83,6 +83,10 @@ func (s *Server) routes() {
 	// AI concierge (OpenRouter)
 	m.Handle("POST "+p+"/concierge/chat", s.h(s.conciergeChat))
 
+	// admin AI (advisory only)
+	m.Handle("POST "+p+"/admin/ai/review-report", s.h(s.adminReviewReport))
+	m.Handle("POST "+p+"/admin/ai/chat", s.h(s.adminChat))
+
 	// schools
 	m.Handle("GET "+p+"/schools", s.h(s.listSchools))
 	m.Handle("GET "+p+"/schools/{school_id}", s.h(s.getSchool))
