@@ -188,5 +188,72 @@ func (d *DB) Migrate(ctx context.Context) error {
 			return err
 		}
 	}
+	return d.MigrateGo(ctx)
+}
+
+// goMigrations are changes made after the Python backend was retired. They are
+// tracked in their own table (go_migrations) and deliberately do NOT touch
+// alembic_version: the old Python service can still share this database during
+// the cutover, and Alembic must keep seeing its own head revision or its
+// `alembic upgrade head` start command would fail. Everything here is purely
+// additive (new tables, nullable columns) so the Python models ignore it.
+var goMigrations = []struct {
+	name  string
+	stmts []string
+}{
+	{"001_schools", []string{
+		`CREATE TABLE schools (
+			id {PK}, name VARCHAR(200) NOT NULL, type VARCHAR(30) NOT NULL, state VARCHAR(60) NOT NULL,
+			town VARCHAR(120) NOT NULL, funding VARCHAR(30) NOT NULL, latitude FLOAT, longitude FLOAT,
+			confidence VARCHAR(20) NOT NULL, source VARCHAR(30) NOT NULL,
+			CONSTRAINT uq_schools_name UNIQUE (name))`,
+		`CREATE INDEX ix_schools_state ON schools (state)`,
+		`ALTER TABLE users ADD COLUMN school_id INTEGER`,
+	}},
+	{"002_school_google_place_id", []string{
+		`ALTER TABLE schools ADD COLUMN google_place_id VARCHAR(255)`,
+	}},
+}
+
+// MigrateGo applies pending Go-only migrations; call it after Migrate.
+func (d *DB) MigrateGo(ctx context.Context) error {
+	if _, err := d.Exec(ctx, `CREATE TABLE IF NOT EXISTS go_migrations (name VARCHAR(100) NOT NULL PRIMARY KEY)`); err != nil {
+		return fmt.Errorf("creating go_migrations: %w", err)
+	}
+	for _, m := range goMigrations {
+		var n int
+		if err := d.QueryRow(ctx, `SELECT COUNT(*) FROM go_migrations WHERE name = ?`, m.name).Scan(&n); err != nil {
+			return err
+		}
+		if n > 0 {
+			continue
+		}
+		err := d.InTx(ctx, func(tx Executor) error {
+			for _, s := range m.stmts {
+				if _, err := tx.Exec(ctx, d.Dialect.render(s)); err != nil {
+					return fmt.Errorf("go migration %s: %w\n%s", m.name, err, s)
+				}
+			}
+			_, err := tx.Exec(ctx, `INSERT INTO go_migrations (name) VALUES (?)`, m.name)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// MarkApplied records a named one-off job (e.g. a data load) as done and
+// reports whether it had already run.
+func (d *DB) MarkApplied(ctx context.Context, tx Executor, name string) (alreadyDone bool, err error) {
+	var n int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM go_migrations WHERE name = ?`, name).Scan(&n); err != nil {
+		return false, err
+	}
+	if n > 0 {
+		return true, nil
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO go_migrations (name) VALUES (?)`, name)
+	return false, err
 }

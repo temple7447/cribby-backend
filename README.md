@@ -70,6 +70,32 @@ The suite ports all 85 Python tests and adds more (135 in total): validation sha
 migrations, email/Cloudinary clients against fake HTTP servers, and cross-compatibility with
 artifacts produced by the Python stack (a real python-jose token, real bcrypt hashes).
 
+## Schools, distances and Google Maps
+
+* **Schools** — a directory of 452 Nigerian universities, polytechnics and colleges of education
+  (`internal/schools/schools.csv`, built by `../schools-data/build_schools.py` and cleaned) is loaded into a
+  `schools` table at boot. `GET /schools?q=&type=&state=&limit=&offset=`, `GET /schools/{id}`. Users pick one
+  with `PATCH /users/me {"school_id": N}` (or `school_id` at signup).
+* **Distance to school** — `GET /listings?school_id=N` returns every listing nearest-first with `distance_km` to
+  that school; `GET /listings/{id}?school_id=N` adds it to one listing.
+* **Google Maps** (needs `GOOGLE_MAPS_API_KEY`; all `/maps/*` routes require login because Google bills per call):
+
+  | Endpoint | What it returns |
+  |---|---|
+  | `GET /maps/status` | `{enabled}` — whether Google features are live |
+  | `GET /maps/route?listing_id=&school_id=&mode=walk\|drive\|transit` | real distance + time and a Google Maps directions link (`source: "google"`, or a labelled `"estimate"` if Google is off/failing) |
+  | `GET /maps/places/nearby?school_id=\|listing_id=\|lat=&lng=&type=pharmacy,hospital&radius_m=` | nearby businesses with **Google Business** data: rating, review count, open-now, phone, website, Maps link, photos (falls back to the curated `places` table, `source: "curated"`) |
+  | `GET /maps/places/{place_id}` | full business profile: weekly hours, reviews, summary, photos |
+  | `GET /maps/places/photo?name=` | a plain image URL for a place photo (the API key never leaves the server) |
+
+* **Exact school locations** — about half the schools only have a town- or state-centre coordinate
+  (`confidence: low | very_low`). The first time one is chosen, it is pinned to its exact Google location
+  (`source: "google"`, `confidence: "high"`, `google_place_id` set). Google-pinned rows survive dataset reloads.
+* **Cost control** — responses are cached for 10 minutes; school pinning requests only the cheap fields; lookups
+  happen only when a user actually chooses a school or opens a screen.
+* **Schema safety** — these changes are tracked in a separate `go_migrations` table and never touch
+  `alembic_version`, so the old Python service (which shares the production database) keeps working.
+
 ## Cutover
 
 1. **Deploy alongside** the Python service (new Render service, or the same `Dockerfile`), pointed at

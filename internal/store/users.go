@@ -10,14 +10,14 @@ import (
 const userCols = `id, email, hashed_password, name, school, avatar_emoji, avatar_url, avatar_public_id,
 	verification_status, verification_code_hash, verification_code_expires_at, verification_code_last_sent_at,
 	password_reset_code_hash, password_reset_code_expires_at, password_reset_code_last_sent_at,
-	is_admin, is_suspended, created_at`
+	is_admin, is_suspended, created_at, school_id`
 
 func scanUser(s rowScanner) (model.User, error) {
 	var u model.User
 	err := s.Scan(&u.ID, &u.Email, &u.HashedPassword, &u.Name, &u.School, &u.AvatarEmoji, &u.AvatarURL, &u.AvatarPublicID,
 		&u.VerificationStatus, &u.VerificationCodeHash, &u.VerificationCodeExpiresAt, &u.VerificationCodeLastSentAt,
 		&u.PasswordResetCodeHash, &u.PasswordResetExpiresAt, &u.PasswordResetLastSentAt,
-		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt)
+		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.SchoolID)
 	return u, err
 }
 
@@ -40,9 +40,9 @@ func ListAdminEmails(ctx context.Context, ex db.Executor) ([]string, error) {
 	}, `SELECT email FROM users WHERE is_admin = ? ORDER BY id`, true)
 }
 
-func CreateUser(ctx context.Context, ex db.Executor, email, hashedPassword, name, school string) (*model.User, error) {
-	id, err := ex.InsertID(ctx, `INSERT INTO users (email, hashed_password, name, school, avatar_emoji, verification_status, is_admin, is_suspended)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, email, hashedPassword, name, school, "🎓", "unverified", false, false)
+func CreateUser(ctx context.Context, ex db.Executor, email, hashedPassword, name, school string, schoolID *int) (*model.User, error) {
+	id, err := ex.InsertID(ctx, `INSERT INTO users (email, hashed_password, name, school, school_id, avatar_emoji, verification_status, is_admin, is_suspended)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, email, hashedPassword, name, school, schoolID, "🎓", "unverified", false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +54,13 @@ func UpdateUserProfile(ctx context.Context, ex db.Executor, id int, name, school
 	_, err := ex.Exec(ctx, `UPDATE users SET
 		name = COALESCE(?, name), school = COALESCE(?, school), avatar_emoji = COALESCE(?, avatar_emoji)
 		WHERE id = ?`, name, school, avatarEmoji, id)
+	return err
+}
+
+// SetUserSchool records the chosen school and keeps the free-text `school`
+// name (shown across the app) in step with it.
+func SetUserSchool(ctx context.Context, ex db.Executor, id int, s *model.School) error {
+	_, err := ex.Exec(ctx, `UPDATE users SET school_id = ?, school = ? WHERE id = ?`, s.ID, s.Name, id)
 	return err
 }
 

@@ -19,7 +19,10 @@ import (
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
 	"campus-backend/internal/email"
+	"campus-backend/internal/google"
+	"campus-backend/internal/schools"
 	"campus-backend/internal/storage"
+	"campus-backend/internal/store"
 )
 
 func main() {
@@ -43,6 +46,12 @@ func main() {
 			os.Exit(1)
 		}
 		log.Info("database at head", "revision", db.HeadRevision())
+		if loaded, err := store.SyncSchools(context.Background(), database); err != nil {
+			log.Error("loading schools failed", "err", err)
+			os.Exit(1)
+		} else if loaded {
+			log.Info("school directory loaded", "version", schools.Version())
+		}
 	}
 	if *migrateOnly {
 		return
@@ -54,6 +63,7 @@ func main() {
 	srv := api.New(cfg, database,
 		email.NewResend(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailVerifyExpireMinutes, cfg.PasswordResetExpireMinutes),
 		storage.NewCloudinary(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
+		google.New(cfg.GoogleMapsAPIKey),
 		log)
 
 	httpSrv := &http.Server{

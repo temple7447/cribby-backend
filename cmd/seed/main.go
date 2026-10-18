@@ -37,6 +37,9 @@ func main() {
 	if err := database.Migrate(ctx); err != nil {
 		fatal(err)
 	}
+	if _, err := store.SyncSchools(ctx, database); err != nil {
+		fatal(err)
+	}
 
 	switch os.Args[1] {
 	case "demo":
@@ -135,7 +138,7 @@ func seedDemo(ctx context.Context, d *db.DB) error {
 		if err != nil {
 			return err
 		}
-		maya, err := store.CreateUser(ctx, tx, "maya@stateuniversity.edu", hash, "Maya Chen", "State University")
+		maya, err := store.CreateUser(ctx, tx, "maya@stateuniversity.edu", hash, "Maya Chen", "State University", nil)
 		if err != nil {
 			return err
 		}
@@ -159,7 +162,7 @@ func seedDemo(ctx context.Context, d *db.DB) error {
 			}
 		}
 		for _, rm := range roommates {
-			u, err := store.CreateUser(ctx, tx, fmt.Sprintf("%s@stateuniversity.edu", lower(rm.Name)), hash, rm.Name, rm.School)
+			u, err := store.CreateUser(ctx, tx, fmt.Sprintf("%s@stateuniversity.edu", lower(rm.Name)), hash, rm.Name, rm.School, nil)
 			if err != nil {
 				return err
 			}

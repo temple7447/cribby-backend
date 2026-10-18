@@ -33,6 +33,9 @@ type Settings struct {
 	CloudinaryAPIKey    string
 	CloudinaryAPISecret string
 
+	// Google Maps Platform (Places + Routes). Server-side only; empty disables it.
+	GoogleMapsAPIKey string
+
 	Port string
 }
 
@@ -65,6 +68,8 @@ func Load() *Settings {
 		CloudinaryCloudName: str("CLOUDINARY_CLOUD_NAME", ""),
 		CloudinaryAPIKey:    str("CLOUDINARY_API_KEY", ""),
 		CloudinaryAPISecret: str("CLOUDINARY_API_SECRET", ""),
+
+		GoogleMapsAPIKey: str("GOOGLE_MAPS_API_KEY", ""),
 
 		Port: str("PORT", "8000"),
 	}

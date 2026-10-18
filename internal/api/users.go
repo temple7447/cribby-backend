@@ -30,9 +30,26 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 		Name        *string `json:"name"`
 		School      *string `json:"school"`
 		AvatarEmoji *string `json:"avatar_emoji"`
+		SchoolID    *int    `json:"school_id"`
 	}
 	if err := bindJSON(r, &p); err != nil {
 		return err
+	}
+	// Choosing a school also sets the display name, so any free-text `school`
+	// sent alongside is ignored in favour of the chosen school's name.
+	if p.SchoolID != nil {
+		picked, err := store.SchoolByID(r.Context(), s.DB.Executor, *p.SchoolID)
+		if err != nil {
+			return err
+		}
+		if picked == nil {
+			return httpErr(http.StatusBadRequest, "Unknown school_id")
+		}
+		if err := store.SetUserSchool(r.Context(), s.DB.Executor, user.ID, picked); err != nil {
+			return err
+		}
+		s.refineSchool(r.Context(), picked) // pin it to its exact Google location, if not already
+		p.School = nil
 	}
 	if err := store.UpdateUserProfile(r.Context(), s.DB.Executor, user.ID, p.Name, p.School, p.AvatarEmoji); err != nil {
 		return err

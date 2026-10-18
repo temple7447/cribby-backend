@@ -22,8 +22,10 @@ import (
 	"campus-backend/internal/api"
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
+	"campus-backend/internal/google"
 	"campus-backend/internal/security"
 	"campus-backend/internal/storage"
+	"campus-backend/internal/store"
 )
 
 type sentCode struct{ To, Code string }
@@ -89,12 +91,82 @@ func (f *fakeStorage) Destroy(_ context.Context, id string) error {
 	return nil
 }
 
+// fakeGoogle is a local stand-in for Places + Routes so tests never spend quota.
+type fakeGoogle struct {
+	srv    *httptest.Server
+	client *google.Client
+	mu     sync.Mutex
+	calls  []string
+	// where text search "finds" things
+	textLat, textLng float64
+	failRoutes       bool
+}
+
+func newFakeGoogle() *fakeGoogle {
+	f := &fakeGoogle{textLat: 6.5180, textLng: 3.3980}
+	mux := http.NewServeMux()
+	rec := func(name string) { f.mu.Lock(); f.calls = append(f.calls, name); f.mu.Unlock() }
+	mux.HandleFunc("POST /places:searchText", func(w http.ResponseWriter, r *http.Request) {
+		rec("searchText")
+		fmt.Fprintf(w, `{"places":[{"id":"ChIJ-school","displayName":{"text":"Found School"},"formattedAddress":"Akoka, Lagos","location":{"latitude":%v,"longitude":%v}}]}`, f.textLat, f.textLng)
+	})
+	mux.HandleFunc("POST /places:searchNearby", func(w http.ResponseWriter, r *http.Request) {
+		rec("searchNearby")
+		if r.Header.Get("X-Goog-Api-Key") != "test-key" || r.Header.Get("X-Goog-FieldMask") == "" {
+			http.Error(w, `{"error":{"message":"bad auth","status":"PERMISSION_DENIED"}}`, 403)
+			return
+		}
+		fmt.Fprint(w, `{"places":[
+		 {"id":"p-far","displayName":{"text":"Far Pharmacy"},"formattedAddress":"1 Far Rd","location":{"latitude":6.54,"longitude":3.41},"rating":3.9,"userRatingCount":12,"types":["pharmacy"],"currentOpeningHours":{"openNow":false}},
+		 {"id":"p-near","displayName":{"text":"Near Pharmacy"},"formattedAddress":"2 Near Rd","location":{"latitude":6.5165,"longitude":3.3905},"rating":4.6,"userRatingCount":88,"nationalPhoneNumber":"0803 000 0000","websiteUri":"https://near.example","googleMapsUri":"https://maps.google.com/?cid=1","types":["pharmacy","health"],"currentOpeningHours":{"openNow":true},"photos":[{"name":"places/p-near/photos/abc"}]}]}`)
+	})
+	mux.HandleFunc("GET /places/{id}", func(w http.ResponseWriter, r *http.Request) {
+		rec("details")
+		fmt.Fprintf(w, `{"id":%q,"displayName":{"text":"Near Pharmacy"},"formattedAddress":"2 Near Rd","rating":4.6,"userRatingCount":88,
+		 "regularOpeningHours":{"weekdayDescriptions":["Monday: 8:00 AM – 9:00 PM","Tuesday: 8:00 AM – 9:00 PM"]},
+		 "editorialSummary":{"text":"Friendly neighbourhood pharmacy."},
+		 "reviews":[{"rating":5,"text":{"text":"Great service"},"relativePublishTimeDescription":"a week ago","authorAttribution":{"displayName":"Ada"}}]}`, r.PathValue("id"))
+	})
+	mux.HandleFunc("GET /places/{id}/photos/{photo}/media", func(w http.ResponseWriter, r *http.Request) {
+		rec("photo")
+		fmt.Fprint(w, `{"name":"x","photoUri":"https://lh3.googleusercontent.com/photo123"}`)
+	})
+	mux.HandleFunc("POST /routes", func(w http.ResponseWriter, r *http.Request) {
+		rec("route")
+		if f.failRoutes {
+			http.Error(w, `{"error":{"message":"quota","status":"RESOURCE_EXHAUSTED"}}`, 429)
+			return
+		}
+		fmt.Fprint(w, `{"routes":[{"distanceMeters":2300,"duration":"1680s"}]}`)
+	})
+	f.srv = httptest.NewServer(mux)
+	f.client = google.New("test-key")
+	f.client.PlacesURL = f.srv.URL
+	f.client.RoutesURL = f.srv.URL + "/routes"
+	return f
+}
+
+func (f *fakeGoogle) disable() { f.client.APIKey = "" }
+
+func (f *fakeGoogle) called(name string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, c := range f.calls {
+		if c == name {
+			n++
+		}
+	}
+	return n
+}
+
 type env struct {
 	t      *testing.T
 	srv    *httptest.Server
 	db     *db.DB
 	mail   *fakeMail
 	photos *fakeStorage
+	google *fakeGoogle
 }
 
 // openTestDB returns an empty migrated database: in-memory SQLite by default, or
@@ -132,6 +204,9 @@ func openTestDB(t *testing.T) *db.DB {
 	if err := d.Migrate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := store.SyncSchools(context.Background(), d); err != nil {
+		t.Fatal(err)
+	}
 	return d
 }
 
@@ -139,13 +214,13 @@ func newEnv(t *testing.T) *env {
 	t.Helper()
 	security.BcryptCost = bcrypt.MinCost // keep the suite fast
 	d := openTestDB(t)
-	e := &env{t: t, db: d, mail: &fakeMail{}, photos: &fakeStorage{
+	e := &env{t: t, db: d, mail: &fakeMail{}, google: newFakeGoogle(), photos: &fakeStorage{
 		configured: true, urlFmt: "https://res.cloudinary.com/test/photo%d.jpg", idFmt: "photo%d",
 	}}
 	cfg := config.Load()
 	cfg.SecretKey = "test-secret"
-	e.srv = httptest.NewServer(api.New(cfg, d, e.mail, e.photos, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
-	t.Cleanup(func() { e.srv.Close(); d.Close() })
+	e.srv = httptest.NewServer(api.New(cfg, d, e.mail, e.photos, e.google.client, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
+	t.Cleanup(func() { e.srv.Close(); e.google.srv.Close(); d.Close() })
 	return e
 }
 
@@ -279,3 +354,5 @@ func num(o obj, key string) int { return int(o[key].(float64)) }
 func list(v any) []any { return v.([]any) }
 
 func path(format string, a ...any) string { return fmt.Sprintf(format, a...) }
+
+func syncSchools(e *env) (bool, error) { return store.SyncSchools(context.Background(), e.db) }

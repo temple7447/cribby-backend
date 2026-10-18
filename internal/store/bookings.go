@@ -28,7 +28,7 @@ func userTargets(u *model.User) []any {
 	return []any{&u.ID, &u.Email, &u.HashedPassword, &u.Name, &u.School, &u.AvatarEmoji, &u.AvatarURL, &u.AvatarPublicID,
 		&u.VerificationStatus, &u.VerificationCodeHash, &u.VerificationCodeExpiresAt, &u.VerificationCodeLastSentAt,
 		&u.PasswordResetCodeHash, &u.PasswordResetExpiresAt, &u.PasswordResetLastSentAt,
-		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt}
+		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.SchoolID}
 }
 
 var bookingJoinCols = prefix("b", bookingCols) + ", " + prefix("l", listingCols)

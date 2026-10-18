@@ -1,0 +1,453 @@
+name,type,state,town,funding,latitude,longitude,confidence,source
+"A.D. Rufa'i College of Education, Legal and General Studies",college_of_education,,Legal and General Studies,state,,,,
+Adamu Augie College of Education,college_of_education,,,state,,,,
+Adamu Tafawa Balewa College of Education,college_of_education,,,state,10.262,9.9999,medium,wikidata
+Adeniran Ogunsanya College of Education,college_of_education,,,state,6.4999477,3.1114308,medium,nominatim
+Aminu Saleh College of Education,college_of_education,,,state,11.6726,10.2039,high,wikidata
+Bilyaminu Othman College of Education,college_of_education,,,state,9.9532,9.50555,high,wikidata
+"College Of Education, Akamkpa",college_of_education,,Akamkpa,state,5.254992018,8.357615178,high,wikidata
+"College Of Education, Lanlate",college_of_education,,Lanlate,state,7.6238378,3.4466453,high,wikidata
+"College of Education and Legal Studies, Nguru",college_of_education,,Nguru,state,12.875615,10.4540091,low,town-centroid
+"College of Education, Akwanga",college_of_education,,Akwanga,state,8.933661058,8.403574984,high,wikidata
+"College of Education, Billiri",college_of_education,,Billiri,state,9.8350997,11.1418759,low,town-centroid
+"College of Education, Ekiadolor",college_of_education,,Ekiadolor,state,6.492076894,5.584184966,high,wikidata
+"College of Education, Gindiri",college_of_education,,Gindiri,state,9.568888888,9.198055555,high,wikidata
+"College of Education, Katsina-Ala",college_of_education,,Katsina-Ala,state,7.313762,9.5660977,low,town-centroid
+"College of Education, Oju",college_of_education,,Oju,state,6.8701551,8.3636442,low,town-centroid
+"College of Education, Waka-Biu",college_of_education,,Waka-Biu,state,10.6383018,12.1976588,low,town-centroid
+"College of Education, Warri",college_of_education,,Warri,state,5.541938,5.742897,high,wikidata
+FCT College of Education,college_of_education,,,state,9.084328,7.207819,high,wikidata
+Isa Kaita College of Education,college_of_education,,,state,,,,
+Kashim Ibrahim College of Education,college_of_education,,,state,11.8366946,13.1202936,high,wikidata
+Michael Otedola College of Primary Education,college_of_education,,,state,,,,
+Mohammed Goni College of Legal and Islamic Studies,college_of_education,,,state,11.8469076,13.1489235,medium,nominatim
+Moje College Of Education,college_of_education,,,state,8.103161586,4.703477323,high,wikidata
+Nwafor Orizu College of Education,college_of_education,,,state,6.224034,6.8018261,medium,nominatim
+Sa'adatu Rimi College of Education,college_of_education,,,state,11.921337039,8.549911808,high,wikidata
+Shehu Shagari College of Education,college_of_education,,,state,,,,
+Umar Suleiman College of Education,college_of_education,,,state,12.87718,11.01072,high,wikidata
+Yusuf Bala Usman College of Legal and General Studies,college_of_education,,,state,12.98156,7.62227,high,wikidata
+Abia State College of Education (Technical),college_of_education,Abia,,state,5.4540953,7.5153071,very_low,state-centroid
+Havard Wilson College of Education,college_of_education,Abia,Aba,private,5.1128008,7.3651376,low,town-centroid
+Adamawa State College of Education,college_of_education,Adamawa,,state,12.33297,6.40365,medium,wikidata
+"Federal College of Education, Yola",college_of_education,Adamawa,Yola,federal,9.240404,12.458638,high,wikidata
+Akwa Ibom State College of Education,college_of_education,Akwa Ibom,,state,4.990638,7.7966205,very_low,state-centroid
+"Federal College of Education, Ididep",college_of_education,Akwa Ibom,Ididep,federal,4.990638,7.7966205,very_low,state-centroid
+"Federal College of Education (Technical), Umunze",college_of_education,Anambra,Umunze,federal,5.9660801,7.2367984,low,town-centroid
+"Federal College of Education, Obudu",college_of_education,Cross River,Obudu,federal,6.641968571,9.206818783,high,wikidata
+"Federal College of Education (Technical), Asaba",college_of_education,Delta,Asaba,federal,6.1858825,6.7297071,low,town-centroid
+Ebonyi State College of Education,college_of_education,Ebonyi,,state,6.116079,8.1624035,medium,wikidata
+African Thinkers Community of Inquiry College of Education,college_of_education,Enugu,Enugu,private,6.4496519,7.5136856,low,town-centroid
+Enugu State College of Education (Technical),college_of_education,Enugu,,state,6.5536094,7.4143061,very_low,state-centroid
+"Federal College of Education, Eha-Amufu",college_of_education,Enugu,Eha-Amufu,federal,6.652226,7.768373,low,town-centroid
+"Institute of Ecumenical Education, (Thinkers Corner), Enugu",college_of_education,Enugu,Enugu,private,6.4687064,7.5234183,medium,wikidata
+"Federal College of Education (Technical), Gombe",college_of_education,Gombe,Gombe,federal,10.2822161,11.1629771,low,town-centroid
+Alvan Ikoku Federal College of Education,college_of_education,Imo,Owerri,federal,5.500298371,7.024156251,high,wikidata
+Imo State College of Education,college_of_education,Imo,,state,5.623173956,7.342366822,high,wikidata
+Jigawa State College of Education,college_of_education,Jigawa,,state,12.619086772,9.380088239,high,wikidata
+Jigawa State College of Education and Legal Studies,college_of_education,Jigawa,,state,12.3252362,9.5103296,very_low,state-centroid
+"Federal College of Education, Zaria",college_of_education,Kaduna,Zaria,federal,11.084,7.732,high,wikidata
+Kaduna State College of Education,college_of_education,Kaduna,,state,10.3825318,7.8533226,very_low,state-centroid
+"Federal College of Education (Technical), Bichi",college_of_education,Kano,Bichi,federal,12.2334,8.24026,low,town-centroid
+"Federal College of Education, Kano",college_of_education,Kano,Kano City,federal,11.9939978,8.5219738,low,town-centroid
+Kano State College of Education and Preliminary Studies,college_of_education,Kano,,state,11.8948389,8.5364136,very_low,state-centroid
+"Federal College of Education, Katsina",college_of_education,Katsina,Katsina,federal,12.930765098,7.60247131,high,wikidata
+"Federal College of Education, Okene",college_of_education,Kogi,Okene,federal,7.5614,6.2429,high,wikidata
+"Kogi State College of Education (Technical), Kabba",college_of_education,Kogi,Kabba,state,7.8287285,6.0731,low,town-centroid
+"Kogi State College of Education, Ankpa",college_of_education,Kogi,Ankpa,state,7.4693182,7.6191528,low,town-centroid
+AJETUNMOBI College of Education Irra,college_of_education,Kwara,IRAA,private,8.8367891,4.6688487,very_low,state-centroid
+College of Education Ilemona,college_of_education,Kwara,Ilemona,private,8.116667,4.666667,low,town-centroid
+"Kwara State College of Education (Technical), Lafiagi",college_of_education,Kwara,Lafiagi,state,8.83682,5.39852,high,wikidata
+"Kwara State College of Education, Ilorin",college_of_education,Kwara,Ilorin,state,8.47537,4.5275,high,wikidata
+"Kwara State College of Education, Oro",college_of_education,Kwara,Oro,state,8.22074,4.88703,high,wikidata
+Nana Aishat Memorial College of Education,college_of_education,Kwara,Ilorin,private,8.5303537,4.5382696,high,wikidata
+"Nigerian Army School of Education (NASE), Ilorin",college_of_education,Kwara,Ilorin,federal,8.4963657,4.5480484,low,town-centroid
+Ansar-Ud-Deen College of Education,college_of_education,Lagos,Isolo,private,6.533420568,3.325035617,medium,wikidata
+"Federal College of Education (Technical), Akoka",college_of_education,Lagos,Akoka,federal,6.5287361,3.39056,low,town-centroid
+St. Augustine College of Education,college_of_education,Lagos,Akoka,private,6.5239493,3.3843501,high,wikidata
+"City College of Education, Mararaba",college_of_education,Nasarawa,Mararaba Gurku,private,8.4387868,8.2382849,very_low,state-centroid
+"Federal College of Education, Kontagora",college_of_education,Niger,Kontagora,federal,10.4071,5.4699,high,wikidata
+Niger State College of Education,college_of_education,Niger,,state,9.633934873,6.54254931,high,wikidata
+"Federal College of Education, Abeokuta",college_of_education,Ogun,Osiele-Abeokuta,federal,7.183333,3.45,low,town-centroid
+Piaget College of Education,college_of_education,Ogun,Abeokuta,private,7.1359349,3.3243326,high,wikidata
+Yewa Central College of Education,college_of_education,Ogun,Ayetoro,private,6.8312935,3.5018956,low,town-centroid
+Adeyemi College of Education,college_of_education,Ondo,Ondo,federal,7.070735,4.818358,high,wikidata
+"Federal College of Education, Iwo",college_of_education,Osun,Iwo,federal,7.643690897,4.165036039,high,wikidata
+"Osun State College of Education, Ilesa",college_of_education,Osun,Ilesa,state,7.6245894,4.7414655,low,town-centroid
+Delar College of Education,college_of_education,Oyo,Ibadan,private,7.3783681,3.8972331,low,town-centroid
+"Federal College of Education (Special), Oyo",college_of_education,Oyo,Oyo,federal,7.8410537,3.9315363,low,town-centroid
+Muftau Olanihun College of Education,college_of_education,Oyo,Ibadan,private,7.3867395,3.9339449,high,wikidata
+"Federal College of Education, Pankshin",college_of_education,Plateau,Pankshin,federal,9.3414,9.3939,high,wikidata
+"Federal College of Education (Technical), Omoku",college_of_education,Rivers,Omoku,federal,5.345239,6.6569515,low,town-centroid
+"Federal College of Education (Technical), Potiskum",college_of_education,Yobe,Potiskum,federal,11.71035086,11.092077597,high,wikidata
+"Federal College of Education (Technical), Gusau",college_of_education,Zamfara,Gusau,federal,12.1658358,6.6606398,low,town-centroid
+Zamfara State College Of Education,college_of_education,Zamfara,,state,12.33297,6.40365,high,wikidata
+Covenant Polytechnic,polytechnic,Abia,Aba,,5.1128008,7.3651376,low,town-centroid
+Federal Polytechnic Ngodo Isuochi,polytechnic,Abia,Aba North,federal,5.0938628,7.3947877,low,town-centroid
+Iheachukwu Madubuike Institute of Technology,polytechnic,Abia,Umunneochi,,5.4540953,7.5153071,very_low,state-centroid
+Ogbonnaya Onu Polytechnic (Abia State Polytechnic),polytechnic,Abia,Aba,,5.1128008,7.3651376,low,town-centroid
+Temple Gate Polytechnic,polytechnic,Abia,Aba,,5.1128008,7.3651376,low,town-centroid
+Adamawa State Polytechnic,polytechnic,Adamawa,Yola,,9.2089255,12.4802485,low,town-centroid
+"Federal Polytechnic, Mubi",polytechnic,Adamawa,Mubi,federal,10.267607,13.264359,low,town-centroid
+Akwa Ibom State Polytechnic,polytechnic,Akwa Ibom,Ikot Ekpene,,5.181975,7.7132177,low,town-centroid
+Federal Polytechnic Ukana,polytechnic,Akwa Ibom,Ukana,federal,5.31302244,7.758698489,high,wikidata
+Hope Polytechnic,polytechnic,Akwa Ibom,Ikono,,5.1832347,7.7908996,low,town-centroid
+Ibom Metropolitan Polytechnic,polytechnic,Akwa Ibom,Atan Offot,,4.990638,7.7966205,very_low,state-centroid
+Loam Polytechnic,polytechnic,Akwa Ibom,Ikono,,5.1832347,7.7908996,low,town-centroid
+Maritime Academy of Nigeria,polytechnic,Akwa Ibom,Oron,,4.8024959,8.2556894,medium,nominatim
+Sure Foundation Polytechnic,polytechnic,Akwa Ibom,Ikot-Akai,,5.131315,7.687672,low,town-centroid
+Trinity Polytechnic,polytechnic,Akwa Ibom,Uyo,,4.990237,7.9974399,low,town-centroid
+Ultra Excellence Polytechnic,polytechnic,Akwa Ibom,Ikono,,5.1832347,7.7908996,low,town-centroid
+Akwa Ibom State College of Arts and Science,polytechnic,Akwa-Ibom,Ikono,,5.1832347,7.7908996,low,town-centroid
+Brainfill Polytechnic,polytechnic,Akwa-Ibom,Ikot-Ekpene,,5.181975,7.7132177,low,town-centroid
+El-thomp Polytechnic,polytechnic,Akwa-Ibom,Abak,,5.0040731,7.7956668,low,town-centroid
+Foundation Polytechnic,polytechnic,Akwa-Ibom,Ikot-Ekpene,,5.181975,7.7132177,low,town-centroid
+Heritage Polytechnic,polytechnic,Akwa-Ibom,Eket,,4.6360066,7.9575416,low,town-centroid
+Anambra State Polytechnic,polytechnic,Anambra,Awka North,,6.3417876,7.0583437,low,town-centroid
+Federal Polytechnic Oko,polytechnic,Anambra,Aguata,federal,6.0507989,7.1072662,medium,nominatim
+Gozie Anyachebelu Oragram Polytechnic,polytechnic,Anambra,Oraukwu,,6.2183136,6.9531842,very_low,state-centroid
+Grundtvig Polytechnic,polytechnic,Anambra,Oba,,6.070069,6.840136,low,town-centroid
+Abubakar Tatari Polytechnic,polytechnic,Bauchi,Bauchi,,10.3072,9.7696,high,wikidata
+"Federal Polytechnic, Bauchi",polytechnic,Bauchi,Bauchi,federal,10.3147618,9.8454417,low,town-centroid
+Bayelsa State Polytechnic,polytechnic,Bayelsa,Ekeremor,,4.9440157,5.710206,low,town-centroid
+Federal Polytechnic Ekowe,polytechnic,Bayelsa,Ekowe,federal,5.2850669,6.4166104,low,town-centroid
+Akawe Torkula Polytechnic,polytechnic,Benue,Makurdi,,7.7312634,8.538425,low,town-centroid
+Ashi Polytechnic,polytechnic,Benue,Anyin,,7.3505747,8.7772877,very_low,state-centroid
+Bellarks Polytechnic,polytechnic,Benue,Kwale,,5.6965837,6.4265493,low,town-centroid
+Benue State Polytechnic,polytechnic,Benue,ugbokolo,,7.147886,7.7794105,low,town-centroid
+Federal Polytechnic Wannune,polytechnic,Benue,Tarka,federal,7.6149052,8.823735,low,town-centroid
+Fidei Polytechnic,polytechnic,Benue,Gboko,,7.3778482,8.8713224,low,town-centroid
+Gboko Polytechnic,polytechnic,Benue,Gboko,,7.3778482,8.8713224,low,town-centroid
+Harry Pass Polytechnic,polytechnic,Benue,Mkar,,7.3505747,8.7772877,very_low,state-centroid
+Intercontinental College of Technology,polytechnic,Benue,Makurdi,,7.7312634,8.538425,low,town-centroid
+Nigerian Army College of Environmental Science and Technology,polytechnic,Benue,Makurdi,,7.7312634,8.538425,low,town-centroid
+"The Polytechnic, Adoka",polytechnic,Benue,Adoka,,7.4536991,7.978458,low,town-centroid
+Federal Polytechnic Monguno,polytechnic,Borno,Monguno,federal,12.6534453,13.6856712,low,town-centroid
+Ramat Polytechnic,polytechnic,Borno,Maiduguri,,11.8390281,13.1321993,medium,nominatim
+Cross River Institute of Technology and Management,polytechnic,Cross River,Ugep,,5.8086,8.0812,low,town-centroid
+Federal Polytechnic Ugep,polytechnic,Cross River,Ugep,federal,5.8086,8.0812,low,town-centroid
+NOGAK Polytechnic,polytechnic,Cross River,Ikom,,5.962765,8.7239694,low,town-centroid
+Odaji Agbo Polytechnic,polytechnic,Cross River,Ayeko-Yala,,6.5895948,8.4959311,low,town-centroid
+Calvary Polytechnic,polytechnic,Delta,Ika North East,,6.2361939,6.320777,low,town-centroid
+Delta State Maritime Polytechnic,polytechnic,Delta,Burutu,,5.3522824,5.5079208,low,town-centroid
+"Delta State Polytechnic, Ogwashi-Uku",polytechnic,Delta,Aniocha South,,6.1419725,6.4773901,low,town-centroid
+"Delta State Polytechnic, Otefe-Oghara",polytechnic,Delta,Ethiope West,,5.9113228,5.7758592,low,town-centroid
+Federal Polytechnic Orogun,polytechnic,Delta,Orogun,federal,5.6411746,6.1568677,low,town-centroid
+Nation Builders Polytechnic,polytechnic,Delta,Asaba,,6.1858825,6.7297071,low,town-centroid
+Petroleum Training Institute,polytechnic,Delta,Effurun,,5.5746716,5.7975963,medium,nominatim
+Akanu Ibiam Federal Polytechnic,polytechnic,Ebonyi,Unwana,,5.7958008,7.9323308,low,town-centroid
+Auchi Polytechnic,polytechnic,Edo,Auchi,,7.063243,6.275237,medium,nominatim
+Edo State Polytechnic Usen,polytechnic,Edo,Ovia South West,,6.4709535,5.2991591,low,town-centroid
+Global Polytechnic,polytechnic,Edo,Benin,,6.3330586,5.6221058,low,town-centroid
+Kings Polytechnic,polytechnic,Edo,Ubiaja,,6.6496458,6.3889698,low,town-centroid
+Lighthouse Polytechnic,polytechnic,Edo,Orhionmwon,,6.0884175,5.9483601,low,town-centroid
+National Institute of Construction Technology and Management,polytechnic,Edo,Uromi,,6.7086526,6.3296676,low,town-centroid
+Shaka Polytechnic,polytechnic,Edo,Benin City,,6.3330586,5.6221058,low,town-centroid
+Ajayi Polytechnic,polytechnic,Ekiti,Ikere,,7.5135717,5.2202759,low,town-centroid
+Crown Polytechnic,polytechnic,Ekiti,Ado-Ekiti,,7.6131935,5.1300357,medium,nominatim
+Ekiti City Polytechnic,polytechnic,Ekiti,Umuooke,,7.736891,5.2738326,very_low,state-centroid
+Ekiti State College of Agriculture and Technology,polytechnic,Ekiti,Ado-Ekiti,,7.6232482,5.22274,low,town-centroid
+"Federal Polytechnic, Ado-Ekiti",polytechnic,Ekiti,Ado Ekiti,federal,7.593134,5.291785,high,wikidata
+Montgomery Polytechnic,polytechnic,Ekiti,Ikere,,7.5135717,5.2202759,low,town-centroid
+Federal Polytechnic Ohodo,polytechnic,Enugu,Ohodo,federal,6.5536094,7.4143061,very_low,state-centroid
+"Institute of Management and Technology, Enugu",polytechnic,Enugu,Enugu East,,6.4298286,7.5123202,medium,nominatim
+Marist Polytechnic,polytechnic,Enugu,Enugu,,6.4871397,7.5646835,medium,nominatim
+Mater Dei Polytechnic,polytechnic,Enugu,Ugwuoba,,6.4480449,7.5303888,low,town-centroid
+Our Saviour Institute of Science and Technology,polytechnic,Enugu,Enugu,private,6.4496519,7.5136856,low,town-centroid
+Citi Polytechnic,polytechnic,FCT,Bwari,,9.2357478,7.4718746,low,town-centroid
+Dorben Polytechnic,polytechnic,FCT,Bwari,,9.2357478,7.4718746,low,town-centroid
+Federal Polytechnic Kaltungo,polytechnic,Gombe,Kaltungo,federal,9.8277549,11.2881292,medium,nominatim
+Gombe State Polytechnic,polytechnic,Gombe,Bajoga,,10.8522235,11.4317646,low,town-centroid
+"Federal Polytechnic, Nekede",polytechnic,Imo,Nekede,federal,5.4333523,7.0339554,low,town-centroid
+Imo State Polytechnic,polytechnic,Imo,Oru East,,5.7274848,6.9478755,low,town-centroid
+Raindrops Institute of Management and Technology,polytechnic,Imo,Orsu,,5.8494268,6.9828062,low,town-centroid
+Binyamu Usman Polytechnic,polytechnic,Jigawa,Hadejia,,12.4812713,10.013613155,medium,wikidata
+Hussaini Adamu Federal Polytechnic,polytechnic,Jigawa,Kazaure,,12.6649357,8.4352429,low,town-centroid
+Jigawa State Polytechnic,polytechnic,Jigawa,Dutse,,11.6909859,9.3390747,low,town-centroid
+Kaduna Polytechnic,polytechnic,Kaduna,Kaduna,,10.5225202,7.4164525,high,wikidata
+Nigerian College of Aviation Technology,polytechnic,Kaduna,Zaria,,11.1301342,7.6856546,medium,nominatim
+Nuhu Bamalli Polytechnic,polytechnic,Kaduna,Zaria,,11.0248119,7.6518533,low,town-centroid
+Federal Polytechnic Kabo,polytechnic,Kano,Kabo,federal,11.8914633,8.2006285,low,town-centroid
+Kano State Polytechnic,polytechnic,Kano,Kano,,11.978514571,8.48997022,high,wikidata
+Mustibrah Polytechnic,polytechnic,Kano,Tudun Fulani,,12.0284083,8.4193796,low,town-centroid
+Federal Polytechnic Daura,polytechnic,Katsina,Daura,federal,13.035917,8.319388,low,town-centroid
+Hassan Usman Katsina Polytechnic,polytechnic,Katsina,Katsina,,12.923957382,7.590613965,high,wikidata
+Katsina Institute of Technology and Management,polytechnic,Katsina,Katsina,,12.9894283,7.6006278,low,town-centroid
+Kebbi State Polytechnic,polytechnic,Kebbi,Dakingari,,11.6449942,4.0615253,low,town-centroid
+Waziri Umaru Federal Polytechnic,polytechnic,Kebbi,Birnin Kebbi,,12.4573462,4.2006114,low,town-centroid
+Federal Polytechnic Idah,polytechnic,Kogi,Idah,federal,7.1099854,6.7340488,low,town-centroid
+Gloryland Polytechnic,polytechnic,Kogi,Ankpa,,7.4693182,7.6191528,low,town-centroid
+Kogi State Polytechnic,polytechnic,Kogi,Lokoja,,7.802355,6.7430327,low,town-centroid
+Prime Polytechnic,polytechnic,Kogi,Ajaokuta,,7.5639973,6.6291171,low,town-centroid
+"Federal Polytechnic, Offa",polytechnic,Kwara,Offa,federal,8.1560008,4.7227435,low,town-centroid
+Graceland Polytechnic,polytechnic,Kwara,Offa,,8.1560008,4.7227435,low,town-centroid
+Harvard Polytechnic,polytechnic,Kwara,Ilorin,,8.4963657,4.5480484,low,town-centroid
+Kwara State Polytechnic,polytechnic,Kwara,Ilorin,,8.593333333,4.661111111,high,wikidata
+Lens Polytechnic,polytechnic,Kwara,Offa,,8.1560008,4.7227435,low,town-centroid
+Newland Polytechnic,polytechnic,Kwara,Ilorin,,8.4963657,4.5480484,low,town-centroid
+"The Polytechnic, Igbo-Owu",polytechnic,Kwara,Igbo-Owu,,8.383333,4.766667,low,town-centroid
+Coastal Polytechnic,polytechnic,Lagos,Badagry,,6.4393223,2.9060324,low,town-centroid
+Eko College of Management and Technology(Ekocity),polytechnic,Lagos,Ikotun,,6.5522982,3.2682658,low,town-centroid
+Enville Polytechnic,polytechnic,Lagos,Ikeja,,6.601627,3.3515981,low,town-centroid
+Grace Polytechnic,polytechnic,Lagos,Surulere,,6.4855737,3.3539907,low,town-centroid
+Inspire Polytechnic,polytechnic,Lagos,Yaba,,6.5068212,3.3754881,low,town-centroid
+Lagos City Polytechnic,polytechnic,Lagos,Ikeja,,6.601627,3.3515981,low,town-centroid
+Oduduwa Polytechnic,polytechnic,Lagos,Idimu,,6.5752564,3.2839038,low,town-centroid
+Paramount Polytechnic,polytechnic,Lagos,Ejigbo,,6.5494509,3.293436,low,town-centroid
+Ronik Polytechnic,polytechnic,Lagos,Ejigbo,,6.5494509,3.293436,low,town-centroid
+TimeOn Kairos Polytechnic,polytechnic,Lagos,Agege,,6.6252516,3.3112096,low,town-centroid
+Unique College of Management and Technology,polytechnic,Lagos,Ikotun,,6.5522982,3.2682658,low,town-centroid
+Yaba College of Technology,polytechnic,Lagos,Yaba,,6.5187275,3.3741408,medium,nominatim
+Al-Hikmah,polytechnic,Nasarawa,Karu,,8.995008,7.7512256,low,town-centroid
+"College of Agriculture, Science and Technology, Lafia",polytechnic,Nasarawa,Lafia,,8.4960459,8.5147636,low,town-centroid
+Federal Polytechnic Nasarawa,polytechnic,Nasarawa,Nasarawa,federal,8.330112,7.7502586,low,town-centroid
+"Isa Mustapha Agwai Polytechnic, Lafia",polytechnic,Nasarawa,Lafia,,8.4960459,8.5147636,low,town-centroid
+NACABS Polytechnic,polytechnic,Nasarawa,Akwanga,,9.0152703,8.3406254,low,town-centroid
+Vineyard Polytechnic,polytechnic,Nasarawa,Karu,,8.995008,7.7512256,low,town-centroid
+"Federal Polytechnic, Bida",polytechnic,Niger,Bida,federal,9.083333,6.016667,low,town-centroid
+Niger State Polytechnic,polytechnic,Niger,Zungeru,,9.806177,6.1514,low,town-centroid
+Abraham Adesanya Polytechnic,polytechnic,Ogun,Ijebu-Igbo,,6.9703057,4.0005264,low,town-centroid
+Allover Central Polytechnic,polytechnic,Ogun,Sango-Ota,,6.71304,3.2463644,low,town-centroid
+"D.S Agbenro ICT Polytechnic, Itori-Ewekoro",polytechnic,Ogun,Ewekoro,,6.961699,3.1734405,low,town-centroid
+"Federal Polytechnic, Ilaro",polytechnic,Ogun,Ilaro,federal,6.8948207,2.9834076,medium,nominatim
+First City Polytechnic,polytechnic,Ogun,Abeokuta,,7.161,3.348,low,town-centroid
+"Gateway Polytechnic, Saapade",polytechnic,Ogun,Saapade,,6.9788582,3.4389293,very_low,state-centroid
+Landmark Polytechnic,polytechnic,Ogun,Aiyetoro,,6.7013064,2.8133582,low,town-centroid
+Moshood Abiola Polytechnic,polytechnic,Ogun,Abeokuta,,7.091489,3.3252838,medium,nominatim
+Ogun State Institute of technology,polytechnic,Ogun,Igbesa,,6.5428,3.1297,low,town-centroid
+Stars Polytechnic,polytechnic,Ogun,Ota,,6.6845264,3.2330105,low,town-centroid
+Best Solution Polytechnic,polytechnic,Ondo,Akure,,7.2525595,5.1932647,low,town-centroid
+British Transatlantic Polytechnic,polytechnic,Ondo,Akure,,7.2525595,5.1932647,low,town-centroid
+Edward Olaseni Polytechnic,polytechnic,Ondo,Akoko,,7.6501792,5.8147441,low,town-centroid
+Federal Polytechnic Ile-Oluji,polytechnic,Ondo,Ile Oluji,federal,7.2074706,4.8699715,low,town-centroid
+Rufus Giwa Polytechnic,polytechnic,Ondo,Owo,,7.1962012,5.5868016,low,town-centroid
+Daboss Polytechnic,polytechnic,Osun,Idominasi,,7.683333,4.7,low,town-centroid
+Distinct Polytechnic,polytechnic,Osun,Ekosin,,8.033333,4.616667,low,town-centroid
+Federal Polytechnic Ede,polytechnic,Osun,Ede,federal,7.733333,4.433333,low,town-centroid
+I-con Universal Polytechnic,polytechnic,Osun,Oshogbo,,7.7791666,4.5538891,low,town-centroid
+Igbajo Polytechnic,polytechnic,Osun,Igbajo,,7.9067213,4.8113976,low,town-centroid
+Interlink Polytechnic,polytechnic,Osun,Ijebu-Jesa,,7.6852476,4.8269922,low,town-centroid
+Iwo City Polytechnic,polytechnic,Osun,Iwo,,7.633333,4.183333,low,town-centroid
+Osun State College of Technology,polytechnic,Osun,Esa-Oke,,7.766667,4.9,low,town-centroid
+Osun State Polytechnic,polytechnic,Osun,Iree,,7.92352,4.72454,high,wikidata
+SAF Polytechnic,polytechnic,Osun,Iseyin,,7.9710106,3.5956141,low,town-centroid
+The Polytechnic Iresi,polytechnic,Osun,Iresi,,7.9358564,4.8434454,low,town-centroid
+"The Polytechnic, Ile-Ife",polytechnic,Osun,Ile-Ife,,7.482824,4.5604451,low,town-centroid
+Villanova Polytechnic,polytechnic,Osun,Obokun,,7.7744022,4.7781458,low,town-centroid
+Westland Polytechnic,polytechnic,Osun,Ilobu,,7.8408473,4.4853735,low,town-centroid
+Adeseun Ogundoyin Polytechnic,polytechnic,Oyo,Eruwa,,7.533333,3.416667,low,town-centroid
+American Polytechnic,polytechnic,Oyo,Wasimi,,8.0116353,2.721531,low,town-centroid
+Bolmor Polytechnic,polytechnic,Oyo,Ibadan,,7.3783681,3.8972331,low,town-centroid
+Federal Polytechnic Ayede,polytechnic,Oyo,Ayede,federal,6.6120875,4.546037,low,town-centroid
+Ibadan City Polytechnic,polytechnic,Oyo,Ibadan,,7.3783681,3.8972331,low,town-centroid
+Novelty Polytechnic,polytechnic,Oyo,Kishi,,9.083333,3.85,low,town-centroid
+Oyo State College of Agriculture and Technology,polytechnic,Oyo,Igboora,,7.429335327,3.308136094,high,wikidata
+The Oke-Ogun Polytechnic,polytechnic,Oyo,Saki,,8.6742435,3.397191,low,town-centroid
+The Polytechnic Ibadan,polytechnic,Oyo,Ibadan,,7.4369114,3.8837345,medium,nominatim
+Federal Polytechnic Nyak Shendam,polytechnic,Plateau,Shendam,federal,8.7365546,9.5155524,low,town-centroid
+Plateau State Polytechnic,polytechnic,Plateau,Barkin-Ladi,,9.8817833,8.8770334,medium,nominatim
+United Polytechnic,polytechnic,Plateau,Jos,,9.9175125,8.8979401,low,town-centroid
+Captain Elechi Amadi Polytechnic,polytechnic,Rivers,Port-Harcourt,,4.7676576,7.0188527,low,town-centroid
+Eastern Polytechnic,polytechnic,Rivers,Port-Harcourt,,4.7676576,7.0188527,low,town-centroid
+Federal Polytechnic of Oil and Gas Bonny,polytechnic,Rivers,Bonny,federal,4.505781,7.203466,low,town-centroid
+"Kenule Beeson Saro-Wiwa Polytechnic, Bori",polytechnic,Rivers,Bori,,4.6748179,7.3656129,low,town-centroid
+Umaru Ali Shinkafi Polytechnic,polytechnic,Sokoto,Wamako,,13.0821193,5.1071233,low,town-centroid
+Federal Polytechnic Bali,polytechnic,Taraba,Bali,federal,8.0906258,10.9522619,low,town-centroid
+Taraba State Polytechnic,polytechnic,Taraba,Suntai,,7.5990442,10.3996625,low,town-centroid
+"College of Administration, Management and Technology, Potiskum",polytechnic,Yobe,Potiskum,,11.7072355,11.0824912,high,wikidata
+"College of Agriculture, Science and Technology, Gujba",polytechnic,Yobe,Gujba,,11.344585,11.9202736,low,town-centroid
+Federal Polytechnic Damaturu,polytechnic,Yobe,Damaturu,federal,11.747,11.9608,low,town-centroid
+"Mai-Idris Alooma Polytechnic, Geidam",polytechnic,Yobe,Geidam,,12.888224565,11.92560799,high,wikidata
+Abdu Gusau Polytechnic,polytechnic,Zamfara,Talata Mafara,,12.3990101,6.0825831,low,town-centroid
+Federal Polytechnic Kaura-Namoda,polytechnic,Zamfara,Kaura Namoda,federal,12.4773306,6.5716659,low,town-centroid
+Abia State University,university,Abia,Uturu,state,5.8265471,7.4239898,low,town-centroid
+Clifford University,university,Abia,Owerrinta,private,5.295705,7.315058,high,wikidata
+Gregory University,university,Abia,Uturu,private,5.8495999,7.4282896,medium,nominatim
+"Michael Okpara University of Agriculture, Umudike",university,Abia,Umudike,federal,5.48066389,7.54568889,high,wikidata
+Rhema University,university,Abia,Aba,private,5.14331,7.34091,high,wikidata
+Adamawa State University,university,Adamawa,Mubi,state,10.281245,13.280169,medium,wikidata
+American University of Nigeria,university,Adamawa,Yola,private,9.191132,12.499648,high,wikidata
+"Federal University of Agriculture, Mubi",university,Adamawa,Mubi,federal,10.267607,13.264359,low,town-centroid
+"Modibbo Adama University, Yola",university,Adamawa,Yola,federal,9.348941569,12.503171961,high,wikidata
+Akwa Ibom State University,university,Akwa Ibom,Uyo,state,5.038614,7.91247,high,wikidata
+Federal University of Technology Ikot Abasi,university,Akwa Ibom,Ikot Abasi,federal,4.574265319,7.578833122,high,wikidata
+Obong University,university,Akwa Ibom,Obong Ntak,private,4.946340333,7.5672013,high,wikidata
+Ritman University,university,Akwa Ibom,Ikot Ekpene,private,5.307947545,7.666817343,high,wikidata
+University of Uyo,university,Akwa Ibom,Uyo,federal,5.053664,7.894804,high,wikidata
+Chukwuemeka Odumegwu Ojukwu University,university,Anambra,Uli,state,5.7808,6.8592,high,wikidata
+Legacy University Okija,university,Anambra,Okija,private,5.889537999,6.849042215,high,wikidata
+Nnamdi Azikiwe University,university,Anambra,Awka,federal,6.245897,7.119907,high,wikidata
+Paul University,university,Anambra,Awka,private,6.179102,7.042198,high,wikidata
+Abubakar Tafawa Balewa University,university,Bauchi,Bauchi,federal,10.3297704,9.8453553,high,wikidata
+Bauchi State University,university,Bauchi,Gadau,state,11.8278,10.1638,high,wikidata
+"Federal University of Health Sciences, Azare",university,Bauchi,Azare,federal,11.6726,10.2039,high,wikidata
+Bayelsa Medical University,university,Bayelsa,Yenagoa,state,4.9514,6.3492,high,wikidata
+Federal University Otuoke,university,Bayelsa,Otuoke,federal,4.798031,6.32121,high,wikidata
+Niger Delta University,university,Bayelsa,Amassoma,state,4.9747118,6.1046353,high,wikidata
+Benue State University,university,Benue,Makurdi,state,7.726538,8.556275,high,wikidata
+Joseph Sarwuan Tarka University,university,Benue,Makurdi,federal,7.7321865,8.5391474,high,wikidata
+University of Mkar,university,Benue,Mkar,private,9.082276,8.675201,high,wikidata
+Al-Ansar University Maiduguri,university,Borno,Maiduguri,private,11.8672912,13.1253851,high,wikidata
+Borno State University,university,Borno,Maiduguri,state,11.8395375,13.1536214,low,town-centroid
+"Nigerian Army University, Biu",university,Borno,Biu,federal,10.61918408,12.161106858,high,wikidata
+University of Maiduguri,university,Borno,Maiduguri,federal,11.804931635,13.197004421,high,wikidata
+Arthur Jarvis University,university,Cross River,Akpabuyo,private,4.940011895,8.455647957,high,wikidata
+University of Calabar,university,Cross River,Calabar,federal,4.95271,8.34059,high,wikidata
+University of Cross River State,university,Cross River,"Ekpo-Abasi, Calabar",state,4.927361,8.333319,high,wikidata
+Admiralty University Ibusa,university,Delta,Ibusa,federal,6.175882,6.623776,low,town-centroid
+Delta State University of Science and Technology,university,Delta,Ozoro,state,5.556186063,6.247165933,medium,wikidata
+"Delta State University, Abraka",university,Delta,Abraka,state,5.7836006,6.1004743,low,town-centroid
+Dennis Osadebay University,university,Delta,Asaba,state,6.1858825,6.7297071,low,town-centroid
+Edwin Clark University,university,Delta,Kiagbodo,private,5.3751463,5.8931927,low,town-centroid
+Federal University of Petroleum Resources Effurun,university,Delta,Effurun,federal,5.5624,5.78,high,wikidata
+Michael and Cecilia Ibru University,university,Delta,Agbara-Otor,private,5.704,5.9339,high,wikidata
+Nigeria Maritime University,university,Delta,Warri,military,5.61898725,5.407475337,high,wikidata
+Nigerian Maritime University,university,Delta,Okerenkoko,federal,5.61898725,5.407475337,high,wikidata
+Novena University,university,Delta,Ogume,private,7.4731703,7.2489759,low,town-centroid
+University of Delta,university,Delta,Agbor,state,6.166769,6.5758125,medium,nominatim
+Western Delta University,university,Delta,Oghara,private,5.5896798,6.0997825,low,town-centroid
+Alex Ekwueme Federal University Ndufu Alike Ikwo,university,Ebonyi,Ikwo,federal,6.13165,8.14136,high,wikidata
+Ebonyi State University,university,Ebonyi,Abakaliki,state,6.33333,8.1,high,wikidata
+"Evangel University, Akaeze",university,Ebonyi,Akaeze,private,6.1996918,8.0348906,very_low,state-centroid
+Ambrose Alli University,university,Edo,Ekpoma,state,6.744634,6.084552,high,wikidata
+Benson Idahosa University,university,Edo,Benin City,private,6.335307,5.604553,high,wikidata
+"Edo State University, Uzairue",university,Edo,Iyamho,state,7.1413211,6.2992769,medium,nominatim
+Igbinedion University,university,Edo,Okada,private,6.7436944,5.4042726,medium,nominatim
+Mudiame University,university,Edo,Irrua,private,6.729685505,6.214380944,high,wikidata
+Samuel Adegboyega University,university,Edo,Ogwa,private,5.65,7.083333,low,town-centroid
+University of Benin,university,Edo,Benin City,federal,6.3337,5.60015,high,wikidata
+Afe Babalola University,university,Ekiti,Ado-Ekiti,private,7.605102,5.3066909,medium,nominatim
+Ekiti State University,university,Ekiti,Ado Ekiti,state,7.72117,5.25753,high,wikidata
+Federal University Oye-Ekiti,university,Ekiti,Oye-Ekiti,federal,7.8805359,5.3375344,low,town-centroid
+Caritas University,university,Enugu,Enugu,private,6.503856852,7.569677992,high,wikidata
+Coal City University,university,Enugu,Enugu,private,6.4617555,7.5866013,medium,nominatim
+Enugu State University of Science and Technology,university,Enugu,Enugu,state,6.31015927,7.525430951,high,wikidata
+Godfrey Okoye University,university,Enugu,Enugu,private,6.4496519,7.5136856,low,town-centroid
+Peaceland University,university,Enugu,Enugu,private,6.4496519,7.5136856,low,town-centroid
+Renaissance University,university,Enugu,Ugbawka,private,6.31,7.557,high,wikidata
+"University of Nigeria, Nsukka",university,Enugu,Nsukka,federal,6.8641025,7.4097397,medium,nominatim
+African Aviation and Aerospace University,university,FCT,Abuja,federal,9.0643305,7.4892974,low,town-centroid
+African University of Science and Technology,university,FCT,Abuja,private,9.0643305,7.4892974,low,town-centroid
+Baze University,university,FCT,Abuja,private,9.0063245,7.4046693,medium,nominatim
+Nile University of Nigeria,university,FCT,Abuja,private,9.0141286,7.3973075,medium,nominatim
+University of Abuja,university,FCT,Gwagwalada,federal,8.980318489,7.180290906,high,wikidata
+Veritas University (Catholic University of Nigeria) Abuja,university,FCT,Bwari,private,9.2357478,7.4718746,low,town-centroid
+Federal University Kashere,university,Gombe,Kashere,federal,9.915830555,11.006819444,high,wikidata
+Gombe State University,university,Gombe,Gombe,state,10.304039,11.170303,high,wikidata
+Gombe State University of Science and Technology,university,Gombe,Kumo,state,10.0496,11.1997,medium,wikidata
+Alvan Ikoku Federal University of Education,university,Imo,Owerri,federal,5.489736,7.0341973,low,town-centroid
+Federal University of Technology Owerri,university,Imo,Owerri,federal,5.393873084,6.985959853,high,wikidata
+Hezekiah University,university,Imo,Umudi,private,5.75817,7.1420607,low,town-centroid
+Imo State University,university,Imo,Owerri,state,5.5077273,7.0404302,high,wikidata
+Kingsley Ozumba Mbadiwe University,university,Imo,Ideato South,state,5.828,7.082,high,wikidata
+Federal University Dutse,university,Jigawa,Dutse,federal,11.6909859,9.3390747,low,town-centroid
+Khadija University,university,Jigawa,Majia,private,12.3087597,9.459772,low,town-centroid
+Sule Lamido University,university,Jigawa,Kafin-Hausa,state,12.1643718,9.9873569,low,town-centroid
+Ahmadu Bello University,university,Kaduna,Zaria,federal,11.15,7.65,high,wikidata
+Air Force Institute of Technology,university,Kaduna,Kaduna,federal,10.600624641,7.437221468,high,wikidata
+Federal University of Applied Sciences Kachia,university,Kaduna,Kachia,federal,9.8694012,7.976271438,high,wikidata
+"Federal University of Education, Zaria",university,Kaduna,Zaria,federal,11.0248119,7.6518533,low,town-centroid
+Greenfield University,university,Kaduna,Kaduna,private,10.5182899,7.4359863,low,town-centroid
+Kaduna State University,university,Kaduna,Kaduna,state,10.5036,7.4337,high,wikidata
+Nigeria Airforce University,university,Kaduna,Kaduna,military,10.609319,7.429504,high,wikidata
+Nigerian Defence Academy,university,Kaduna,Kaduna,military,10.615721641,7.366495929,high,wikidata
+Nigerian Defense Academy,university,Kaduna,Kaduna,federal,10.615721641,7.366495929,medium,wikidata
+Nok University Kachia,university,Kaduna,Kachia,federal,9.869401201,7.976271438,high,wikidata
+Aliko Dangote University of Science and Technology,university,Kano,Wudil,state,11.76688,8.8390149,low,town-centroid
+Bayero University,university,Kano,Kano,federal,12.0160591,8.5065423,medium,nominatim
+"Nigeria Police Academy, Wudil",university,Kano,Wudil,federal,11.76688,8.8390149,low,town-centroid
+Skyline University,university,Kano,Kano,private,11.9853777,8.5318469,high,wikidata
+"Yusuf Maitama Sule Federal University of Education, Kano",university,Kano,Kano,federal,11.9939978,8.5219738,low,town-centroid
+Yusuf Maitama Sule University Kano,university,Kano,Kano,state,11.9939978,8.5219738,low,town-centroid
+Al-Qalam University,university,Katsina,Katsina,private,12.9894283,7.6006278,low,town-centroid
+Federal University Dutsin-Ma,university,Katsina,Dutsin-Ma,federal,12.455565428,7.491856757,high,wikidata
+"Federal University of Transportation, Daura",university,Katsina,Daura,federal,12.974,8.347,high,wikidata
+Umaru Musa Yar'adua University,university,Katsina,Katsina,state,12.8858107,7.5734783,high,wikidata
+Federal University Birnin Kebbi,university,Kebbi,Birnin Kebbi,federal,12.434517,4.19524,high,wikidata
+"Federal University of Agriculture, Zuru",university,Kebbi,Zuru,federal,11.40674,5.24066,high,wikidata
+Kebbi State University of Science and Technology,university,Kebbi,Aliero,state,12.2882578,4.4706915,low,town-centroid
+Federal University Lokoja,university,Kogi,Lokoja,federal,7.852146913,6.684965761,high,wikidata
+Prince Abubakar Audu University,university,Kogi,Anyigba,state,7.480942,7.187462,high,wikidata
+Salem University,university,Kogi,Lokoja,private,7.802355,6.7430327,low,town-centroid
+Ahman Pategi University,university,Kwara,Pategi,private,8.6704602,5.8172728,low,town-centroid
+Al-Hikmah University,university,Kwara,Ilorin,private,8.4813922,4.5038336,medium,nominatim
+Kwara State University,university,Kwara,Malete,state,8.730726337,4.466557428,high,wikidata
+Landmark University,university,Kwara,Omu-Aran,private,8.122992723,5.08282851,high,wikidata
+Summit University,university,Kwara,Offa,private,8.157333,4.724792,high,wikidata
+University of Ilorin,university,Kwara,Ilorin,federal,8.4795,4.6712,high,wikidata
+Anchor University,university,Lagos,Ayobo,private,6.6024126,3.2425353,medium,nominatim
+CETEP City University,university,Lagos,Yaba,private,6.5068212,3.3754881,low,town-centroid
+Caleb University,university,Lagos,Ikorodu,private,6.669481107,3.63903008,high,wikidata
+"James Hope University, Lagos",university,Lagos,Lekki,private,6.4711251,3.8147504,low,town-centroid
+Lagos State University,university,Lagos,Ojo,state,6.4651,3.2009,high,wikidata
+Lagos State University of Education,university,Lagos,Ijanikin,state,6.4966575,3.1207995,low,town-centroid
+Lagos State University of Science and Technology,university,Lagos,Ikorodu,state,6.645276958,3.517721566,high,wikidata
+National Open University of Nigeria,university,Lagos,Victoria Island,federal,6.4300279,3.4259904,low,town-centroid
+Nigerian University of Technology and Management,university,Lagos,Apapa,private,6.449444444,3.354722222,high,wikidata
+Pan-Atlantic University,university,Lagos,Lekki,private,6.4880723,3.8557195,medium,nominatim
+University of Lagos,university,Lagos,Akoka,federal,6.51666667,3.38611111,high,wikidata
+Ave Maria University,university,Nasarawa,Piyanko,private,8.4387868,8.2382849,very_low,state-centroid
+Bingham University,university,Nasarawa,Karu,private,8.9559656,7.6993779,medium,nominatim
+Federal University Lafia,university,Nasarawa,Lafia,federal,8.506,8.5227,high,wikidata
+Mewar University,university,Nasarawa,Masaka,private,9.005,7.673611,low,town-centroid
+Nasarawa State University,university,Nasarawa,Keffi,state,8.8471,7.8776,high,wikidata
+Abdulkadir Kure University,university,Niger,Minna,state,9.5988,6.5692,high,wikidata
+Federal University of Technology Minna,university,Niger,Minna,federal,9.5836,6.5463,high,wikidata
+Ibrahim Badamasi Babangida University,university,Niger,Lapai,state,9.06738,6.56979,high,wikidata
+Babcock University,university,Ogun,Ilishan-Remo,private,6.8900559,3.7224377,medium,nominatim
+Bells University of Technology,university,Ogun,Ota,private,6.723856917,3.109199023,medium,wikidata
+Chrisland University,university,Ogun,Abeokuta,private,7.161,3.348,low,town-centroid
+Christopher University,university,Ogun,Mowe,private,6.82999,3.475619,high,wikidata
+Covenant University,university,Ogun,Ota,private,6.6719407,3.1573472,medium,nominatim
+Crawford University,university,Ogun,Igbesa,private,6.5428,3.1297,low,town-centroid
+Crescent University,university,Ogun,Abeokuta,private,7.161,3.348,low,town-centroid
+"Federal University of Agriculture, Abeokuta",university,Ogun,Abeokuta,federal,7.22976,3.43929,high,wikidata
+Hallmark University,university,Ogun,Ijebu-Itele,private,6.8140077,3.9151668,low,town-centroid
+McPherson University,university,Ogun,Seriki-Setayo,private,7.122059344,3.748087124,high,wikidata
+Mountain Top University,university,Ogun,Makogi Oba,private,6.7349067,3.4144299,high,wikidata
+Olabisi Onabanjo University,university,Ogun,Ago-Iwoye,state,6.933835573,3.869708801,high,wikidata
+Tai Solarin Federal University of Education,university,Ogun,Ijebu-Ode,federal,6.8140077,3.9151668,low,town-centroid
+Achievers University,university,Ondo,Owo,private,7.169052759,5.58912878,medium,wikidata
+Adekunle Ajasin University,university,Ondo,Akungba-Akoko,state,7.479234,5.748411,high,wikidata
+Adeyemi Federal University of Education,university,Ondo,Ondo,federal,7.1,4.833333,low,town-centroid
+Elizade University,university,Ondo,Ilara-Mokin,private,7.3496824,5.1131915,low,town-centroid
+Federal University of Technology Akure,university,Ondo,Akure,federal,7.3037,5.1388,high,wikidata
+Olusegun Agagu University of Science and Technology,university,Ondo,Okitipupa,state,6.5025,4.7795,high,wikidata
+Sam Maris University,university,Ondo,Supare,private,7.452453,5.693571,low,town-centroid
+Wesley University,university,Ondo,Ondo,private,7.108442038,4.816735598,high,wikidata
+Adeleke University,university,Osun,Ede,private,7.759951,4.462499,high,wikidata
+Bowen University,university,Osun,Iwo,private,7.6211377,4.1920882,medium,nominatim
+Fountain University,university,Osun,Osogbo,private,7.743853,4.546027,high,wikidata
+Joseph Ayo Babalola University,university,Osun,Ikeji-Arakeji,private,7.41611111,4.96888889,high,wikidata
+Kings University,university,Osun,Odeomu,private,7.5647529,4.4075556,high,wikidata
+Obafemi Awolowo University,university,Osun,Ile Ife,federal,7.51833333,4.52277778,high,wikidata
+Oduduwa University,university,Osun,Ipetumodu,private,7.501070484,4.452747342,high,wikidata
+Osun State University,university,Osun,Osogbo,state,7.7616469,4.6012166,high,wikidata
+Redeemer's University Nigeria,university,Osun,Ede,private,7.733333,4.433333,low,town-centroid
+Westland University,university,Osun,Iwo,private,7.707875,4.200378,medium,wikidata
+Abiola Ajimobi Technical University,university,Oyo,Ibadan,state,7.3783681,3.8972331,low,town-centroid
+Ajayi Crowther University,university,Oyo,Oyo,private,7.849847746,3.948523523,high,wikidata
+Dominican University Ibadan,university,Oyo,Ibadan,private,7.3783681,3.8972331,low,town-centroid
+Emmanuel Ayande University of Education,university,Oyo,Oyo,state,7.874499169,3.911792992,high,wikidata
+Koladaisi University,university,Oyo,Ibadan,private,7.3783681,3.8972331,low,town-centroid
+Ladoke Akintola University of Technology,university,Oyo,Ogbomoso,state,8.1333,4.2356,high,wikidata
+Lead City University,university,Oyo,Ibadan,private,7.327555568,3.876419538,high,wikidata
+Precious Cornerstone University,university,Oyo,Ibadan,private,7.3775,3.947,high,wikidata
+University of Ibadan,university,Oyo,Ibadan,federal,7.4433,3.9003,high,wikidata
+"Federal University of Education, Pankshin",university,Plateau,Pankshin,federal,9.3054781,9.3794144,low,town-centroid
+Plateau State University,university,Plateau,Bokkos,state,9.371224,8.956855,high,wikidata
+University of Jos,university,Plateau,Jos,federal,9.9692,8.884,high,wikidata
+Ignatius Ajuru University of Education,university,Rivers,Port Harcourt,state,4.8056401,6.9316053,high,wikidata
+Madonna University,university,Rivers,Elele,private,5.135833333,6.826916666,high,wikidata
+PAMO University of Medical Sciences,university,Rivers,Port Harcourt,private,4.860179368,7.102676646,high,wikidata
+Rivers State University,university,Rivers,Port Harcourt,state,4.8,6.99,high,wikidata
+University of Port Harcourt,university,Rivers,Port Harcourt,federal,4.907171013,6.917077399,high,wikidata
+Sokoto State University,university,Sokoto,Sokoto,state,12.94229,5.19055,high,wikidata
+Usmanu Danfodiyo University,university,Sokoto,Sokoto,federal,13.1246,5.1994,high,wikidata
+Federal University Wukari,university,Taraba,Wukari,federal,7.8773,9.779,high,wikidata
+Kwararafa University,university,Taraba,Wukari,private,7.8705196,9.7775523,low,town-centroid
+Taraba State University,university,Taraba,Jalingo,state,8.90021,11.31686,high,wikidata
+Federal University Gashua,university,Yobe,Gashua,federal,12.8758,11.012,high,wikidata
+Yobe State University,university,Yobe,Damaturu,state,11.678,11.946,high,wikidata
+Federal University Gusau,university,Zamfara,Gusau,federal,12.128767171,6.781189708,high,wikidata
+Zamfara State University,university,Zamfara,Talata Mafara,state,12.569853,6.0448891,high,wikidata

@@ -29,6 +29,7 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 		Password string `json:"password" validate:"required"`
 		Name     string `json:"name" validate:"required"`
 		School   string `json:"school"`
+		SchoolID *int   `json:"school_id"` // optional: a school picked from /schools
 	}{School: "State University"}
 	if err := bindJSON(r, &p); err != nil {
 		return err
@@ -41,11 +42,21 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	if exists != nil {
 		return httpErr(http.StatusBadRequest, "Email already registered")
 	}
+	if p.SchoolID != nil {
+		picked, err := store.SchoolByID(ctx, s.DB.Executor, *p.SchoolID)
+		if err != nil {
+			return err
+		}
+		if picked == nil {
+			return httpErr(http.StatusBadRequest, "Unknown school_id")
+		}
+		p.School = picked.Name
+	}
 	hash, err := security.HashPassword(p.Password)
 	if err != nil {
 		return err
 	}
-	user, err := store.CreateUser(ctx, s.DB.Executor, p.Email, hash, p.Name, p.School)
+	user, err := store.CreateUser(ctx, s.DB.Executor, p.Email, hash, p.Name, p.School, p.SchoolID)
 	if db.IsUniqueViolation(err) { // lost a race with a concurrent signup
 		return httpErr(http.StatusBadRequest, "Email already registered")
 	}

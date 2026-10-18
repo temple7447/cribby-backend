@@ -23,6 +23,7 @@ type User struct {
 	IsAdmin                    bool     `json:"is_admin"`
 	IsSuspended                bool     `json:"is_suspended"`
 	CreatedAt                  db.Time  `json:"created_at"`
+	SchoolID                   *int     `json:"school_id"` // the school chosen from /schools, if any
 }
 
 type Photo struct {
@@ -200,4 +201,21 @@ type AdminUserDetail struct {
 	RoommateProfile *RoommateProfile `json:"roommate_profile"`
 	ReportsFiled    []Report         `json:"reports_filed"`
 	ReportsAgainst  []Report         `json:"reports_against"`
+}
+
+// School is an institution users can pick; distances in the app are measured to
+// its coordinates. Confidence says how exact those coordinates are.
+type School struct {
+	ID         int      `json:"id"`
+	Name       string   `json:"name"`
+	Type       string   `json:"type"` // university | polytechnic | college_of_education
+	State      string   `json:"state"`
+	Town       string   `json:"town"`
+	Funding    string   `json:"funding"`
+	Latitude   *float64 `json:"latitude"`
+	Longitude  *float64 `json:"longitude"`
+	Confidence string   `json:"confidence"` // high | medium | low (town centre) | very_low (state centre)
+	Source     string   `json:"source"`     // wikidata | nominatim | town-centroid | state-centroid | google
+	// GooglePlaceID links the school to its Google Business listing (see /maps/places/{id}).
+	GooglePlaceID *string `json:"google_place_id"`
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"campus-backend/internal/db"
+	"campus-backend/internal/geo"
 	"campus-backend/internal/model"
 	"campus-backend/internal/security"
 	"campus-backend/internal/storage"
@@ -27,8 +28,18 @@ func (s *Server) listListings(w http.ResponseWriter, r *http.Request) error {
 		NearLng:  q.optFloat("near_lng"),
 		RadiusKM: q.optFloat("radius_km"),
 	}
+	schoolID := q.optInt("school_id")
 	if err := q.err(); err != nil {
 		return err
+	}
+	// ?school_id=N measures every listing against that school: results come back
+	// nearest-first with distance_km set (an explicit near_lat/near_lng wins).
+	if f.NearLat == nil || f.NearLng == nil {
+		lat, lng, err := s.schoolOrigin(r.Context(), schoolID)
+		if err != nil {
+			return err
+		}
+		f.NearLat, f.NearLng = lat, lng
 	}
 	listings, err := store.SearchListings(r.Context(), s.DB.Executor, f)
 	if err != nil {
@@ -43,12 +54,26 @@ func (s *Server) getListing(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	q := newQuery(r)
+	schoolID := q.optInt("school_id")
+	if err := q.err(); err != nil {
+		return err
+	}
 	l, err := store.ListingByID(r.Context(), s.DB.Executor, id)
 	if err != nil {
 		return err
 	}
 	if l == nil {
 		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	// ?school_id=N adds distance_km from that school to this listing.
+	lat, lng, err := s.schoolOrigin(r.Context(), schoolID)
+	if err != nil {
+		return err
+	}
+	if lat != nil && lng != nil && l.Latitude != nil && l.Longitude != nil {
+		km := geo.Round2(geo.HaversineKM(*lat, *lng, *l.Latitude, *l.Longitude))
+		l.DistanceKM = &km
 	}
 	writeJSON(w, http.StatusOK, l)
 	return nil

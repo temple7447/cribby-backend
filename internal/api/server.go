@@ -14,6 +14,7 @@ import (
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
 	"campus-backend/internal/email"
+	"campus-backend/internal/google"
 	"campus-backend/internal/model"
 	"campus-backend/internal/security"
 	"campus-backend/internal/storage"
@@ -25,12 +26,13 @@ type Server struct {
 	DB     *db.DB
 	mail   email.Sender
 	photos storage.Storage
+	maps   *google.Client
 	log    *slog.Logger
 	mux    *http.ServeMux
 }
 
-func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, log: log, mux: http.NewServeMux()}
+func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, log *slog.Logger) *Server {
+	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, log: log, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
@@ -73,6 +75,17 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/listings/{listing_id}", s.h(s.getListing))
 	m.Handle("POST "+p+"/listings/{listing_id}/photos", s.h(s.uploadListingPhoto))
 	m.Handle("DELETE "+p+"/listings/{listing_id}/photos/{photo_id}", s.h(s.deleteListingPhoto))
+
+	// schools
+	m.Handle("GET "+p+"/schools", s.h(s.listSchools))
+	m.Handle("GET "+p+"/schools/{school_id}", s.h(s.getSchool))
+
+	// google maps (auth required: Google bills per call)
+	m.Handle("GET "+p+"/maps/status", s.h(s.mapsStatus))
+	m.Handle("GET "+p+"/maps/route", s.h(s.mapsRoute))
+	m.Handle("GET "+p+"/maps/places/nearby", s.h(s.mapsNearby))
+	m.Handle("GET "+p+"/maps/places/photo", s.h(s.mapsPhoto))
+	m.Handle("GET "+p+"/maps/places/{place_id}", s.h(s.mapsPlaceDetails))
 
 	// places
 	m.Handle("GET "+p+"/places", s.h(s.listPlaces))
