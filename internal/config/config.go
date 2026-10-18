@@ -49,7 +49,7 @@ func Load() *Settings {
 		DatabaseURL: str("DATABASE_URL", "sqlite+aiosqlite:///./campus.db"),
 
 		SecretKey:                str("SECRET_KEY", "change-me-in-production"),
-		AccessTokenExpireMinutes: integer("ACCESS_TOKEN_EXPIRE_MINUTES", 60*24*7), // 1 week
+		AccessTokenExpireMinutes: integer("ACCESS_TOKEN_EXPIRE_MINUTES", 60*24*30), // 30 days: log in once, stay in for a month
 		BackendCORSOrigins: list("BACKEND_CORS_ORIGINS", []string{
 			"http://localhost:8081",
 			"http://localhost:8099",

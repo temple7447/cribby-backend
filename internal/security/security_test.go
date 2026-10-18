@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -129,5 +130,21 @@ func TestNewUUIDLooksLikeV4(t *testing.T) {
 	}
 	if NewUUID() == u {
 		t.Fatal("uuids repeat")
+	}
+}
+
+func TestThirtyDayTokenIsValidForThirtyDaysButNotLonger(t *testing.T) {
+	tok, err := CreateAccessToken("s3cret", "a@b.co", 30*24*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sub, ok := DecodeAccessToken("s3cret", tok); !ok || sub != "a@b.co" {
+		t.Fatalf("fresh 30-day token rejected: %v %v", sub, ok)
+	}
+	// Decode the expiry and check it is ~30 days out.
+	parsed, _, _ := jwt.NewParser().ParseUnverified(tok, jwt.MapClaims{})
+	exp, _ := parsed.Claims.(jwt.MapClaims).GetExpirationTime()
+	if d := time.Until(exp.Time); d < 29*24*time.Hour || d > 31*24*time.Hour {
+		t.Fatalf("expiry is %v from now, want ~30 days", d)
 	}
 }

@@ -14,7 +14,7 @@ func TestDefaultsMatchThePythonSettings(t *testing.T) {
 	}
 	t.Chdir(t.TempDir())
 	c := Load()
-	if c.DatabaseURL != "sqlite+aiosqlite:///./campus.db" || c.APIV1Str != "/api/v1" || c.AccessTokenExpireMinutes != 10080 ||
+	if c.DatabaseURL != "sqlite+aiosqlite:///./campus.db" || c.APIV1Str != "/api/v1" || c.AccessTokenExpireMinutes != 43200 ||
 		c.EmailVerifyExpireMinutes != 30 || c.EmailVerifyCooldownSeconds != 60 || c.Port != "8000" {
 		t.Fatalf("got %+v", c)
 	}
