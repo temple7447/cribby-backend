@@ -36,6 +36,11 @@ type Settings struct {
 	// Google Maps Platform (Places + Routes). Server-side only; empty disables it.
 	GoogleMapsAPIKey string
 
+	// OpenRouter (https://openrouter.ai) powers the Cribby AI concierge. Server-side only.
+	OpenRouterAPIKey    string
+	OpenRouterModel     string
+	OpenRouterReasoning bool
+
 	Port string
 }
 
@@ -71,6 +76,10 @@ func Load() *Settings {
 
 		GoogleMapsAPIKey: str("GOOGLE_MAPS_API_KEY", ""),
 
+		OpenRouterAPIKey:    str("OPENROUTER_API_KEY", ""),
+		OpenRouterModel:     str("OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free"),
+		OpenRouterReasoning: boolean("OPENROUTER_REASONING", true),
+
 		Port: str("PORT", "8000"),
 	}
 }
@@ -86,6 +95,15 @@ func integer(key string, def int) int {
 	if v, ok := os.LookupEnv(key); ok {
 		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
 			return n
+		}
+	}
+	return def
+}
+
+func boolean(key string, def bool) bool {
+	if v, ok := os.LookupEnv(key); ok {
+		if b, err := strconv.ParseBool(strings.TrimSpace(v)); err == nil {
+			return b
 		}
 	}
 	return def

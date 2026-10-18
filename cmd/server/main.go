@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"campus-backend/internal/ai"
 	"campus-backend/internal/api"
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
@@ -64,6 +65,7 @@ func main() {
 		email.NewResend(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailVerifyExpireMinutes, cfg.PasswordResetExpireMinutes),
 		storage.NewCloudinary(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
 		google.New(cfg.GoogleMapsAPIKey),
+		ai.New(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, cfg.OpenRouterReasoning),
 		log)
 
 	httpSrv := &http.Server{

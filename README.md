@@ -96,6 +96,20 @@ artifacts produced by the Python stack (a real python-jose token, real bcrypt ha
 * **Schema safety** — these changes are tracked in a separate `go_migrations` table and never touch
   `alembic_version`, so the old Python service (which shares the production database) keeps working.
 
+## Cribby AI (OpenRouter)
+
+`POST /concierge/chat` (login required) is the real AI behind the app's "Ask Cribby AI". The app sends the
+conversation; the server adds the student's school and the visible listings (nearest to that school first) to
+a system prompt and calls OpenRouter (`internal/ai`). The model may recommend up to 3 listings by tagging them
+`[[listing:ID]]`; the server strips the tags, drops any id the model wasn't actually shown, and returns
+`{reply, listings}` so the app can render real listing cards. Guard rails: only listings from the context can be
+recommended, off-topic requests are declined, replies are cleaned to plain text, history is capped at the last 10
+turns / 1,000 chars each, and each user gets 15 requests per 10 minutes (429 after that). The model's private
+"reasoning" is never sent to the user. Without `OPENROUTER_API_KEY` the endpoint answers 503.
+
+Default model: `dots-studio/dots-3-note-preview:free` — measured faster (4–9 s) and steadier than
+`xingchen-agi/xing4.0-29b-a4b:free` (10–50 s, one failure in three) on the same prompts. Change it with `OPENROUTER_MODEL`.
+
 ## Cutover
 
 1. **Deploy alongside** the Python service (new Render service, or the same `Dockerfile`), pointed at

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"campus-backend/internal/ai"
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
 	"campus-backend/internal/email"
@@ -27,12 +28,15 @@ type Server struct {
 	mail   email.Sender
 	photos storage.Storage
 	maps   *google.Client
-	log    *slog.Logger
-	mux    *http.ServeMux
+	// assistant is the OpenRouter-backed Cribby AI; chats rate-limits it per user.
+	assistant *ai.Client
+	chats     *chatLimiter
+	log       *slog.Logger
+	mux       *http.ServeMux
 }
 
-func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, log: log, mux: http.NewServeMux()}
+func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, assistant *ai.Client, log *slog.Logger) *Server {
+	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), log: log, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
@@ -75,6 +79,9 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/listings/{listing_id}", s.h(s.getListing))
 	m.Handle("POST "+p+"/listings/{listing_id}/photos", s.h(s.uploadListingPhoto))
 	m.Handle("DELETE "+p+"/listings/{listing_id}/photos/{photo_id}", s.h(s.deleteListingPhoto))
+
+	// AI concierge (OpenRouter)
+	m.Handle("POST "+p+"/concierge/chat", s.h(s.conciergeChat))
 
 	// schools
 	m.Handle("GET "+p+"/schools", s.h(s.listSchools))

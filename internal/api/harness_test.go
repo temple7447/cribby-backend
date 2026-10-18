@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"campus-backend/internal/ai"
 	"campus-backend/internal/api"
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
@@ -160,6 +161,52 @@ func (f *fakeGoogle) called(name string) int {
 	return n
 }
 
+// fakeAI stands in for OpenRouter: it records the request and returns a canned reply.
+type fakeAI struct {
+	srv    *httptest.Server
+	client *ai.Client
+	mu     sync.Mutex
+	reply  string
+	status int
+	last   map[string]any // the last request body
+	auth   string
+	calls  int
+}
+
+func newFakeAI() *fakeAI {
+	f := &fakeAI{reply: "Hello from the assistant.", status: 200}
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.calls++
+		f.auth = r.Header.Get("Authorization")
+		_ = json.NewDecoder(r.Body).Decode(&f.last)
+		if f.status != 200 {
+			w.WriteHeader(f.status)
+			fmt.Fprint(w, `{"error":{"message":"rate limited upstream"}}`)
+			return
+		}
+		out, _ := json.Marshal(map[string]any{"choices": []any{map[string]any{
+			"message": map[string]any{"content": f.reply, "reasoning": "PRIVATE CHAIN OF THOUGHT"}}}})
+		w.Write(out)
+	}))
+	f.client = ai.New("or-test-key", "test/model:free", true)
+	f.client.URL = f.srv.URL
+	return f
+}
+
+func (f *fakeAI) disable() { f.client.APIKey = "" }
+
+func (f *fakeAI) messages() []map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []map[string]any
+	for _, m := range f.last["messages"].([]any) {
+		out = append(out, m.(map[string]any))
+	}
+	return out
+}
+
 type env struct {
 	t      *testing.T
 	srv    *httptest.Server
@@ -167,6 +214,7 @@ type env struct {
 	mail   *fakeMail
 	photos *fakeStorage
 	google *fakeGoogle
+	ai     *fakeAI
 }
 
 // openTestDB returns an empty migrated database: in-memory SQLite by default, or
@@ -214,13 +262,13 @@ func newEnv(t *testing.T) *env {
 	t.Helper()
 	security.BcryptCost = bcrypt.MinCost // keep the suite fast
 	d := openTestDB(t)
-	e := &env{t: t, db: d, mail: &fakeMail{}, google: newFakeGoogle(), photos: &fakeStorage{
+	e := &env{t: t, db: d, mail: &fakeMail{}, google: newFakeGoogle(), ai: newFakeAI(), photos: &fakeStorage{
 		configured: true, urlFmt: "https://res.cloudinary.com/test/photo%d.jpg", idFmt: "photo%d",
 	}}
 	cfg := config.Load()
 	cfg.SecretKey = "test-secret"
-	e.srv = httptest.NewServer(api.New(cfg, d, e.mail, e.photos, e.google.client, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
-	t.Cleanup(func() { e.srv.Close(); e.google.srv.Close(); d.Close() })
+	e.srv = httptest.NewServer(api.New(cfg, d, e.mail, e.photos, e.google.client, e.ai.client, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
+	t.Cleanup(func() { e.srv.Close(); e.google.srv.Close(); e.ai.srv.Close(); d.Close() })
 	return e
 }
 
