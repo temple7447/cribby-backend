@@ -122,6 +122,8 @@ type Place struct {
 	Website         string   `json:"website"`
 	MapsURL         string   `json:"maps_url"` // opens the business in Google Maps
 	Types           []string `json:"types"`
+	PrimaryType     string   `json:"primary_type"` // Google's best single type, e.g. "bank"
+	TypeLabel       string   `json:"type_label"`   // …and its readable name, e.g. "Bank"
 	PriceLevel      string   `json:"price_level"`
 	BusinessStatus  string   `json:"business_status"` // OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY
 	Summary         string   `json:"summary"`
@@ -152,9 +154,13 @@ type gPlace struct {
 	Website       string   `json:"websiteUri"`
 	MapsURI       string   `json:"googleMapsUri"`
 	Types         []string `json:"types"`
-	PriceLevel    string   `json:"priceLevel"`
-	Status        string   `json:"businessStatus"`
-	Editorial     struct {
+	PrimaryType   string   `json:"primaryType"`
+	PrimaryLabel  struct {
+		Text string `json:"text"`
+	} `json:"primaryTypeDisplayName"`
+	PriceLevel string `json:"priceLevel"`
+	Status     string `json:"businessStatus"`
+	Editorial  struct {
 		Text string `json:"text"`
 	} `json:"editorialSummary"`
 	CurrentHours struct {
@@ -182,7 +188,7 @@ func (g gPlace) toPlace() Place {
 	p := Place{
 		PlaceID: g.ID, Name: g.DisplayName.Text, Address: g.Formatted, Rating: g.Rating, UserRatingCount: g.RatingCount,
 		OpenNow: g.CurrentHours.OpenNow, Phone: firstNonEmpty(g.National, g.International), Website: g.Website,
-		MapsURL: g.MapsURI, Types: g.Types, PriceLevel: g.PriceLevel, BusinessStatus: g.Status, Summary: g.Editorial.Text,
+		MapsURL: g.MapsURI, Types: g.Types, PrimaryType: g.PrimaryType, TypeLabel: g.PrimaryLabel.Text, PriceLevel: g.PriceLevel, BusinessStatus: g.Status, Summary: g.Editorial.Text,
 		WeeklyHours: g.RegularHours.Descriptions,
 	}
 	if g.Location != nil {
@@ -221,7 +227,7 @@ func firstNonEmpty(v ...string) string {
 
 const summaryMask = "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount," +
 	"places.currentOpeningHours.openNow,places.nationalPhoneNumber,places.websiteUri,places.googleMapsUri,places.types," +
-	"places.priceLevel,places.businessStatus,places.photos.name"
+	"places.priceLevel,places.businessStatus,places.photos.name,places.primaryType,places.primaryTypeDisplayName"
 
 // basicMask asks only for identity and location — Google bills by the fields
 // requested, and pinning a school needs nothing more.
@@ -237,6 +243,32 @@ func (c *Client) SearchText(ctx context.Context, query string, max int) ([]Place
 		}
 		err := c.do(ctx, http.MethodPost, c.PlacesURL+"/places:searchText", basicMask,
 			map[string]any{"textQuery": query, "regionCode": "NG", "maxResultCount": max}, &out)
+		places := make([]Place, 0, len(out.Places))
+		for _, g := range out.Places {
+			places = append(places, g.toPlace())
+		}
+		return places, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return v.([]Place), nil
+}
+
+// SearchNear finds businesses by name or kind ("GTBank", "pharmacy open late") with results
+// biased towards a point — what the app's search box needs, since a name filter over the
+// nearest places can't find anything that isn't already among them.
+func (c *Client) SearchNear(ctx context.Context, query string, lat, lng, radiusM float64, max int) ([]Place, error) {
+	key := fmt.Sprintf("near|%s|%.4f|%.4f|%.0f|%d", strings.ToLower(query), lat, lng, radiusM, max)
+	v, err := c.cached(key, func() (any, error) {
+		var out struct {
+			Places []gPlace `json:"places"`
+		}
+		err := c.do(ctx, http.MethodPost, c.PlacesURL+"/places:searchText", summaryMask, map[string]any{
+			"textQuery": query, "regionCode": "NG", "maxResultCount": max,
+			"locationBias": map[string]any{"circle": map[string]any{
+				"center": map[string]float64{"latitude": lat, "longitude": lng}, "radius": radiusM}},
+		}, &out)
 		places := make([]Place, 0, len(out.Places))
 		for _, g := range out.Places {
 			places = append(places, g.toPlace())
@@ -279,7 +311,7 @@ func (c *Client) Nearby(ctx context.Context, lat, lng, radiusM float64, types []
 }
 
 const detailMask = "id,displayName,formattedAddress,location,rating,userRatingCount,nationalPhoneNumber,internationalPhoneNumber," +
-	"websiteUri,googleMapsUri,regularOpeningHours,currentOpeningHours,businessStatus,types,priceLevel,photos,reviews,editorialSummary"
+	"websiteUri,googleMapsUri,regularOpeningHours,currentOpeningHours,businessStatus,types,primaryType,primaryTypeDisplayName,priceLevel,photos,reviews,editorialSummary"
 
 // Details returns everything Google Business has on one place: hours, phone,
 // website, rating, reviews, photos.
@@ -318,16 +350,35 @@ func (c *Client) PhotoURL(ctx context.Context, name string, maxWidth int) (strin
 
 // ---- routes ----
 
-// Route is real travel distance and time between two points.
+// Route is real travel distance and time between two points, with the path to draw on
+// an in-app map and the turn-by-turn steps.
 type Route struct {
 	Mode        string  `json:"mode"` // walk | drive | transit
 	DistanceM   int     `json:"distance_m"`
 	DurationS   int     `json:"duration_s"`
 	DistanceKM  float64 `json:"distance_km"`
 	DurationMin int     `json:"duration_min"`
+	// Polyline is the route in Google's encoded-polyline format; the app decodes and draws it.
+	Polyline string `json:"polyline"`
+	Steps    []Step `json:"steps"`
+}
+
+// Step is one turn-by-turn instruction.
+type Step struct {
+	Instruction string `json:"instruction"`
+	DistanceM   int    `json:"distance_m"`
+	DurationS   int    `json:"duration_s"`
 }
 
 var travelModes = map[string]string{"walk": "WALK", "drive": "DRIVE", "transit": "TRANSIT"}
+
+const routeMask = "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline," +
+	"routes.legs.steps.navigationInstruction.instructions,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration"
+
+func parseSeconds(d string) int {
+	n, _ := strconv.Atoi(strings.TrimSuffix(d, "s"))
+	return n
+}
 
 func (c *Client) Route(ctx context.Context, from, to LatLng, mode string) (*Route, error) {
 	gm, ok := travelModes[mode]
@@ -343,9 +394,21 @@ func (c *Client) Route(ctx context.Context, from, to LatLng, mode string) (*Rout
 			Routes []struct {
 				DistanceMeters int    `json:"distanceMeters"`
 				Duration       string `json:"duration"`
+				Polyline       struct {
+					Encoded string `json:"encodedPolyline"`
+				} `json:"polyline"`
+				Legs []struct {
+					Steps []struct {
+						Nav struct {
+							Instructions string `json:"instructions"`
+						} `json:"navigationInstruction"`
+						DistanceMeters int    `json:"distanceMeters"`
+						StaticDuration string `json:"staticDuration"`
+					} `json:"steps"`
+				} `json:"legs"`
 			} `json:"routes"`
 		}
-		err := c.do(ctx, http.MethodPost, c.RoutesURL, "routes.duration,routes.distanceMeters",
+		err := c.do(ctx, http.MethodPost, c.RoutesURL, routeMask,
 			map[string]any{"origin": pt(from), "destination": pt(to), "travelMode": gm, "units": "METRIC"}, &out)
 		if err != nil {
 			return nil, err
@@ -353,9 +416,20 @@ func (c *Client) Route(ctx context.Context, from, to LatLng, mode string) (*Rout
 		if len(out.Routes) == 0 {
 			return nil, errors.New("google: no route found")
 		}
-		secs, _ := strconv.Atoi(strings.TrimSuffix(out.Routes[0].Duration, "s"))
-		return &Route{Mode: mode, DistanceM: out.Routes[0].DistanceMeters, DurationS: secs,
-			DistanceKM: float64(out.Routes[0].DistanceMeters) / 1000, DurationMin: (secs + 30) / 60}, nil
+		r0 := out.Routes[0]
+		secs := parseSeconds(r0.Duration)
+		route := &Route{Mode: mode, DistanceM: r0.DistanceMeters, DurationS: secs,
+			DistanceKM: float64(r0.DistanceMeters) / 1000, DurationMin: (secs + 30) / 60,
+			Polyline: r0.Polyline.Encoded, Steps: []Step{}}
+		for _, leg := range r0.Legs {
+			for _, st := range leg.Steps {
+				if st.Nav.Instructions == "" {
+					continue
+				}
+				route.Steps = append(route.Steps, Step{Instruction: st.Nav.Instructions, DistanceM: st.DistanceMeters, DurationS: parseSeconds(st.StaticDuration)})
+			}
+		}
+		return route, nil
 	})
 	if err != nil {
 		return nil, err

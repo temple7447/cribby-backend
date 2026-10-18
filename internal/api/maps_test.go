@@ -40,9 +40,8 @@ func TestRouteUsesGoogleForRealWalkingDistance(t *testing.T) {
 	if sl := out["straight_line_km"].(float64); sl < 1 || sl > 2 {
 		t.Fatalf("straight line %v", sl)
 	}
-	url := out["directions_url"].(string)
-	if !strings.HasPrefix(url, "https://www.google.com/maps/dir/?api=1&origin=") || !strings.HasSuffix(url, "travelmode=walking") {
-		t.Fatalf("directions url %q", url)
+	if _, leaked := out["directions_url"]; leaked {
+		t.Fatal("the app keeps users inside it — no external directions link")
 	}
 	if out["from"] != "Near campus" || out["to"] != "University of Lagos" {
 		t.Fatalf("labels %v / %v", out["from"], out["to"])
@@ -125,8 +124,8 @@ func TestNearbyFallsBackToCuratedPlaces(t *testing.T) {
 	if out["source"] != "curated" || len(places) != 1 || places[0].(obj)["name"] != "Curated Pharmacy" || places[0].(obj)["distance_km"] == nil {
 		t.Fatalf("got %v", out)
 	}
-	if !strings.Contains(places[0].(obj)["maps_url"].(string), "google.com/maps") {
-		t.Fatalf("maps_url %v", places[0].(obj)["maps_url"])
+	if places[0].(obj)["type_label"] != "Pharmacy" {
+		t.Fatalf("curated places need a readable type label: %v", places[0])
 	}
 }
 
@@ -215,5 +214,139 @@ func TestSchoolsNotRefinedWhenGoogleIsOff(t *testing.T) {
 	e.expect(200, "PATCH", "/users/me", token, obj{"school_id": id(s)})
 	if e.google.called("searchText") != 0 {
 		t.Fatal("called Google while disabled")
+	}
+}
+
+// ---- in-app map support: route line + steps, search, "All", ordering, limits ----
+
+func TestRouteReturnsTheLineAndTurnByTurnStepsForTheInAppMap(t *testing.T) {
+	e, token, school, listing := mapsFixture(t)
+	out := e.expect(200, "GET", path("/maps/route?listing_id=%d&school_id=%d&mode=walk", listing, school), token, nil).(obj)
+	if out["polyline"] != "_p~iF~ps|U_ulLnnqC_mqNvxq`@" {
+		t.Fatalf("polyline %q", out["polyline"])
+	}
+	steps := list(out["steps"])
+	if len(steps) != 2 { // the step without an instruction is dropped
+		t.Fatalf("steps %v", steps)
+	}
+	first := steps[0].(obj)
+	if first["instruction"] != "Head north on University Rd" || num(first, "distance_m") != 800 || num(first, "duration_s") != 600 {
+		t.Fatalf("first step %v", first)
+	}
+	// both end points are returned so the app can place pins without extra lookups
+	for _, k := range []string{"from_lat", "from_lng", "to_lat", "to_lng"} {
+		if out[k] == nil {
+			t.Fatalf("missing %s", k)
+		}
+	}
+}
+
+func TestEstimatedRouteHasNoLineSoTheAppDrawsAStraightOne(t *testing.T) {
+	e, token, school, listing := mapsFixture(t)
+	e.google.disable()
+	out := e.expect(200, "GET", path("/maps/route?listing_id=%d&school_id=%d", listing, school), token, nil).(obj)
+	if out["source"] != "estimate" || out["polyline"] != "" || len(list(out["steps"])) != 0 || out["from_lat"] == nil {
+		t.Fatalf("got %v", out)
+	}
+}
+
+func TestSearchFindsBusinessesByNameNearAPointNearestFirst(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	out := e.expect(200, "GET", path("/maps/places/search?q=GTBank&school_id=%d&radius_m=4000", school), token, nil).(obj)
+	if out["source"] != "google" {
+		t.Fatalf("got %v", out)
+	}
+	places := list(out["places"])
+	if len(places) != 2 || places[0].(obj)["name"] != "GTBank Akoka" || places[1].(obj)["name"] != "GTBank Far Branch" {
+		t.Fatalf("not nearest-first: %v", places)
+	}
+	near := places[0].(obj)
+	if near["distance_km"] == nil || near["type_label"] != "Bank" || near["rating"].(float64) != 4.4 || near["open_now"] != true {
+		t.Fatalf("business info %v", near)
+	}
+	// the search is biased to the chosen point and radius
+	body := e.google.bodies["searchText"]
+	if body["textQuery"] != "GTBank" || body["regionCode"] != "NG" {
+		t.Fatalf("request %v", body)
+	}
+	circle := body["locationBias"].(obj)["circle"].(obj)
+	if circle["radius"].(float64) != 4000 {
+		t.Fatalf("bias %v", circle)
+	}
+}
+
+func TestSearchValidationAndFallback(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	e.expect(422, "GET", path("/maps/places/search?q=a&school_id=%d", school), token, nil)
+	e.expect(422, "GET", path("/maps/places/search?q=%s&school_id=%d", strings.Repeat("x", 81), school), token, nil)
+	e.expect(400, "GET", "/maps/places/search?q=gtbank", token, nil)
+	e.expect(401, "GET", path("/maps/places/search?q=gtbank&school_id=%d", school), "", nil)
+
+	// Google off → our curated places, matched by name, still with distances
+	e.google.disable()
+	e.createPlace("GTBank Curated", "bank", 6.5165, 3.3905)
+	e.createPlace("Some Pharmacy", "pharmacy", 6.5166, 3.3906)
+	out := e.expect(200, "GET", path("/maps/places/search?q=gtbank&school_id=%d", school), token, nil).(obj)
+	places := list(out["places"])
+	if out["source"] != "curated" || len(places) != 1 || places[0].(obj)["name"] != "GTBank Curated" || places[0].(obj)["distance_km"] == nil {
+		t.Fatalf("got %v", out)
+	}
+}
+
+func TestAllMeansUsefulPlacesNotEveryBusiness(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	e.expect(200, "GET", path("/maps/places/nearby?school_id=%d", school), token, nil) // no type = "All"
+	got := list(e.google.bodies["searchNearby"]["includedTypes"])
+	want := map[string]bool{"pharmacy": true, "hospital": true, "bank": true, "restaurant": true, "bus_station": true, "mosque": true, "church": true}
+	have := map[string]bool{}
+	for _, x := range got {
+		have[x.(string)] = true
+	}
+	for k := range want {
+		if !have[k] {
+			t.Errorf("'All' should include %q", k)
+		}
+	}
+	for _, junk := range []string{"beauty_salon", "wholesaler", "clothing_store", "manufacturer"} {
+		if have[junk] {
+			t.Errorf("'All' must not include %q", junk)
+		}
+	}
+	// an explicit type still wins
+	e.expect(200, "GET", path("/maps/places/nearby?school_id=%d&type=pharmacy", school), token, nil)
+	if only := list(e.google.bodies["searchNearby"]["includedTypes"]); len(only) != 1 || only[0] != "pharmacy" {
+		t.Fatalf("explicit type ignored: %v", only)
+	}
+}
+
+func TestNearbyResultsAreSortedNearestFirst(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	out := e.expect(200, "GET", path("/maps/places/nearby?school_id=%d&type=pharmacy", school), token, nil).(obj)
+	places := list(out["places"])
+	if len(places) != 2 || places[0].(obj)["name"] != "Near Pharmacy" { // Google's fake returns Far first
+		t.Fatalf("not re-sorted by distance: %v", names(out["places"]))
+	}
+	if places[0].(obj)["distance_km"].(float64) > places[1].(obj)["distance_km"].(float64) {
+		t.Fatal("distances not ascending")
+	}
+}
+
+func TestGoogleBackedCallsAreRateLimitedPerUser(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	for i := 0; i < 150; i++ {
+		if code, _ := e.do("GET", path("/maps/places/nearby?school_id=%d&type=pharmacy&radius_m=%d", school, 1000+i), token, nil); code != 200 {
+			t.Fatalf("request %d: %d", i+1, code)
+		}
+	}
+	if code, _ := e.do("GET", path("/maps/places/nearby?school_id=%d&type=pharmacy&radius_m=9999", school), token, nil); code != 429 {
+		t.Fatalf("151st request: %d, want 429", code)
+	}
+	// another user is unaffected
+	other, _ := e.signup("other-map@gmail.com")
+	e.expect(200, "GET", path("/maps/places/nearby?school_id=%d&type=pharmacy", school), other, nil)
+	// a route over the limit degrades to an estimate instead of failing
+	out := e.expect(200, "GET", "/maps/route?from_lat=6.5&from_lng=3.3&to_lat=6.52&to_lng=3.39", token, nil).(obj)
+	if out["source"] != "estimate" {
+		t.Fatalf("got %v", out)
 	}
 }

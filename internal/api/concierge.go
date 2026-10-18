@@ -28,22 +28,28 @@ const (
 // (or quota), so one account can't hammer it. Per-instance, which is fine for a
 // single Render instance.
 type chatLimiter struct {
-	mu   sync.Mutex
-	hits map[int][]time.Time
+	mu     sync.Mutex
+	hits   map[int][]time.Time
+	max    int
+	window time.Duration
 }
 
-func newChatLimiter() *chatLimiter { return &chatLimiter{hits: map[int][]time.Time{}} }
+func newChatLimiter() *chatLimiter { return newLimiter(chatsPerWindow, chatWindow) }
+
+func newLimiter(max int, window time.Duration) *chatLimiter {
+	return &chatLimiter{hits: map[int][]time.Time{}, max: max, window: window}
+}
 
 func (l *chatLimiter) allow(userID int, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	recent := l.hits[userID][:0]
 	for _, t := range l.hits[userID] {
-		if now.Sub(t) < chatWindow {
+		if now.Sub(t) < l.window {
 			recent = append(recent, t)
 		}
 	}
-	if len(recent) >= chatsPerWindow {
+	if len(recent) >= l.max {
 		l.hits[userID] = recent
 		return false
 	}

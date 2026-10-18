@@ -13,6 +13,7 @@ import (
 	"net/textproto"
 	neturl "net/url"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -101,18 +102,34 @@ type fakeGoogle struct {
 	// where text search "finds" things
 	textLat, textLng float64
 	failRoutes       bool
+	bodies           map[string]map[string]any // last request body per endpoint
 }
 
 func newFakeGoogle() *fakeGoogle {
-	f := &fakeGoogle{textLat: 6.5180, textLng: 3.3980}
+	f := &fakeGoogle{textLat: 6.5180, textLng: 3.3980, bodies: map[string]map[string]any{}}
 	mux := http.NewServeMux()
 	rec := func(name string) { f.mu.Lock(); f.calls = append(f.calls, name); f.mu.Unlock() }
+	capture := func(name string, r *http.Request) {
+		var m map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&m)
+		f.mu.Lock()
+		f.bodies[name] = m
+		f.mu.Unlock()
+	}
 	mux.HandleFunc("POST /places:searchText", func(w http.ResponseWriter, r *http.Request) {
 		rec("searchText")
+		capture("searchText", r)
+		if strings.Contains(r.Header.Get("X-Goog-FieldMask"), "places.rating") { // the business-info search, not school pinning
+			fmt.Fprint(w, `{"places":[
+			 {"id":"b-far","displayName":{"text":"GTBank Far Branch"},"formattedAddress":"9 Far St","location":{"latitude":6.545,"longitude":3.358},"rating":3.8,"primaryType":"bank","primaryTypeDisplayName":{"text":"Bank"},"currentOpeningHours":{"openNow":false}},
+			 {"id":"b-near","displayName":{"text":"GTBank Akoka"},"formattedAddress":"1 University Rd","location":{"latitude":6.5170,"longitude":3.3978},"rating":4.4,"userRatingCount":210,"primaryType":"bank","primaryTypeDisplayName":{"text":"Bank"},"currentOpeningHours":{"openNow":true}}]}`)
+			return
+		}
 		fmt.Fprintf(w, `{"places":[{"id":"ChIJ-school","displayName":{"text":"Found School"},"formattedAddress":"Akoka, Lagos","location":{"latitude":%v,"longitude":%v}}]}`, f.textLat, f.textLng)
 	})
 	mux.HandleFunc("POST /places:searchNearby", func(w http.ResponseWriter, r *http.Request) {
 		rec("searchNearby")
+		capture("searchNearby", r)
 		if r.Header.Get("X-Goog-Api-Key") != "test-key" || r.Header.Get("X-Goog-FieldMask") == "" {
 			http.Error(w, `{"error":{"message":"bad auth","status":"PERMISSION_DENIED"}}`, 403)
 			return
@@ -138,7 +155,11 @@ func newFakeGoogle() *fakeGoogle {
 			http.Error(w, `{"error":{"message":"quota","status":"RESOURCE_EXHAUSTED"}}`, 429)
 			return
 		}
-		fmt.Fprint(w, `{"routes":[{"distanceMeters":2300,"duration":"1680s"}]}`)
+		fmt.Fprint(w, `{"routes":[{"distanceMeters":2300,"duration":"1680s","polyline":{"encodedPolyline":"_p~iF~ps|U_ulLnnqC_mqNvxq`+"`"+`@"},
+		 "legs":[{"steps":[
+		  {"navigationInstruction":{"instructions":"Head north on University Rd"},"distanceMeters":800,"staticDuration":"600s"},
+		  {"navigationInstruction":{"instructions":"Turn left onto Akoka Rd"},"distanceMeters":1500,"staticDuration":"1080s"},
+		  {"distanceMeters":10,"staticDuration":"5s"}]}]}]}`)
 	})
 	f.srv = httptest.NewServer(mux)
 	f.client = google.New("test-key")

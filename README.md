@@ -128,6 +128,23 @@ Resolve / Dismiss / Approve.
 
 The dashboard shows an **✨ AI review** button on every open report and an **AI Assistant** page.
 
+## Emails
+
+Four branded transactional emails (`internal/email/templates.go`) share one layout in Cribby's look — paper
+background, ink outlines, hard offset shadows, coral/violet/sunshine/mint accents, the logo, a hidden inbox
+preview line, and a footer with support/privacy links:
+
+| Email | When | Look |
+|---|---|---|
+| Verification code | signup / "verify" | sunshine band, 6 digit boxes, anti-phishing note |
+| Password reset | forgot password | violet band, 6 digit boxes |
+| Booking request (to admin) | a student requests a home | mint band, details table, "Review request" button → admin dashboard |
+| Booking decision (to student) | admin approves / rejects | mint "You're approved! 🎉" with next steps, or a gentle violet "Not this time" |
+
+Built for email clients: table layout, inline styles only, no scripts, system-font fallbacks, a plain-text
+alternative for every message, and all user-supplied text HTML-escaped. Preview them without sending anything:
+`go run ./cmd/emailpreview ./email-previews` and open the HTML files in a browser.
+
 ## Cutover
 
 1. **Deploy alongside** the Python service (new Render service, or the same `Dockerfile`), pointed at

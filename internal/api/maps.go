@@ -2,14 +2,11 @@ package api
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"campus-backend/internal/geo"
 	"campus-backend/internal/google"
@@ -24,7 +21,7 @@ func (s *Server) mapsStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"enabled":  s.maps.Configured(),
-		"features": []string{"route", "nearby_businesses", "place_details", "photos"},
+		"features": []string{"route", "route_steps", "nearby_businesses", "search", "place_details", "photos"},
 	})
 	return nil
 }
@@ -80,20 +77,27 @@ func (s *Server) resolvePoint(r *http.Request, q *queryParams, prefix string) (*
 	return nil, nil
 }
 
-func directionsURL(from, to point, mode string) string {
-	tm := map[string]string{"walk": "walking", "drive": "driving", "transit": "transit"}[mode]
-	return fmt.Sprintf("https://www.google.com/maps/dir/?api=1&origin=%.6f,%.6f&destination=%.6f,%.6f&travelmode=%s",
-		from.lat, from.lng, to.lat, to.lng, tm)
+// mapsAllowed rate-limits Google-backed calls per user: Google bills per request, so one
+// account must not be able to run up the bill.
+func (s *Server) mapsAllowed(userID int) error {
+	if !s.mapsLimit.allow(userID, time.Now()) {
+		return httpErr(http.StatusTooManyRequests, "Too many map requests — please wait a few minutes and try again")
+	}
+	return nil
 }
 
-// mapsRoute: real travel distance/time from a listing (or any point) to a school.
+// mapsRoute: travel distance/time from one point to another, with the line to draw on the
+// in-app map and turn-by-turn steps.
 //
-//	/maps/route?listing_id=12&school_id=5&mode=walk
+//	/maps/route?listing_id=12&school_id=5&mode=walk      (listing → school)
+//	/maps/route?from_lat=..&from_lng=..&to_listing_id=12  (any two points)
 //
-// Falls back to a clearly-labelled estimate when Google is unavailable, so the UI
-// always has something to show; `source` says which it is.
+// Falls back to a clearly-labelled estimate when Google is unavailable (no line, no steps —
+// the app then draws a straight dashed line), so the UI always has something to show;
+// `source` says which it is.
 func (s *Server) mapsRoute(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentUser(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	q := newQuery(r)
@@ -134,15 +138,17 @@ func (s *Server) mapsRoute(w http.ResponseWriter, r *http.Request) error {
 
 	straight := geo.Round2(geo.HaversineKM(from.lat, from.lng, to.lat, to.lng))
 	out := map[string]any{
-		"mode": mode, "straight_line_km": straight, "directions_url": directionsURL(*from, *to, mode),
-		"from": from.label, "to": to.label,
+		"mode": mode, "straight_line_km": straight, "from": from.label, "to": to.label,
+		"from_lat": from.lat, "from_lng": from.lng, "to_lat": to.lat, "to_lng": to.lng,
+		"polyline": "", "steps": []google.Step{},
 	}
-	if s.maps.Configured() {
+	if s.maps.Configured() && s.mapsLimit.allow(user.ID, time.Now()) {
 		rt, err := s.maps.Route(r.Context(), google.LatLng{Latitude: from.lat, Longitude: from.lng},
 			google.LatLng{Latitude: to.lat, Longitude: to.lng}, mode)
 		if err == nil {
 			out["source"], out["distance_km"], out["distance_m"] = "google", geo.Round2(rt.DistanceKM), rt.DistanceM
 			out["duration_min"], out["duration_s"] = rt.DurationMin, rt.DurationS
+			out["polyline"], out["steps"] = rt.Polyline, rt.Steps
 			writeJSON(w, http.StatusOK, out)
 			return nil
 		}
@@ -164,13 +170,23 @@ type placeResult struct {
 	Places []google.Place `json:"places"`
 }
 
+// usefulPlaceTypes is what "All" means: the kinds of place a student actually looks for,
+// instead of every business Google knows (salons, wholesalers, boutiques…).
+var usefulPlaceTypes = []string{
+	"hospital", "pharmacy", "doctor", "bank", "atm", "supermarket", "grocery_store", "convenience_store",
+	"restaurant", "cafe", "bus_station", "gym", "laundry", "police", "church", "mosque",
+}
+
 // mapsNearby lists businesses around a school, listing or point — with Google
 // Business data (rating, hours, phone, website, photos) when Google is enabled,
 // otherwise our curated places table in the same shape.
 //
 //	/maps/places/nearby?school_id=5&type=pharmacy,hospital&radius_m=2000&limit=15
+//
+// With no `type`, only useful everyday places are returned (see usefulPlaceTypes).
 func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentUser(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	q := newQuery(r)
@@ -201,21 +217,101 @@ func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if s.maps.Configured() {
-		places, err := s.maps.Nearby(r.Context(), origin.lat, origin.lng, radius, types, limit)
+		if err := s.mapsAllowed(user.ID); err != nil {
+			return err
+		}
+		googleTypes := types
+		if len(googleTypes) == 0 {
+			googleTypes = usefulPlaceTypes
+		}
+		places, err := s.maps.Nearby(r.Context(), origin.lat, origin.lng, radius, googleTypes, limit)
 		if err == nil {
-			places = append([]google.Place(nil), places...) // don't mutate the cached slice
-			for i := range places {
-				if places[i].Latitude != nil && places[i].Longitude != nil {
-					d := geo.Round2(geo.HaversineKM(origin.lat, origin.lng, *places[i].Latitude, *places[i].Longitude))
-					places[i].DistanceKM = &d
-				}
-			}
-			writeJSON(w, http.StatusOK, placeResult{Source: "google", Places: places})
+			writeJSON(w, http.StatusOK, placeResult{Source: "google", Places: withDistances(places, origin)})
 			return nil
 		}
 		s.log.Warn("google nearby failed, using curated places", "err", err)
 	}
 	return s.curatedNearby(w, r, origin, radius/1000, types, limit)
+}
+
+// mapsSearch finds businesses by name or kind near a point — the app's search box.
+//
+//	/maps/places/search?q=gtbank&school_id=5&radius_m=3000&limit=10
+func (s *Server) mapsSearch(w http.ResponseWriter, r *http.Request) error {
+	user, err := s.currentUser(r)
+	if err != nil {
+		return err
+	}
+	q := newQuery(r)
+	text := strings.TrimSpace(q.str("q"))
+	origin, err := s.resolvePoint(r, q, "")
+	if err != nil {
+		return err
+	}
+	radius := 3000.0
+	if v := q.optFloat("radius_m"); v != nil {
+		radius = *v
+	}
+	limit := 15
+	if v := q.optInt("limit"); v != nil {
+		limit = *v
+	}
+	if err := q.err(); err != nil {
+		return err
+	}
+	if n := utf8.RuneCountInString(text); n < 2 || n > 80 {
+		return validationFailed(fieldError{"string_length", []any{"query", "q"}, "q must be 2 to 80 characters"})
+	}
+	if origin == nil {
+		return httpErr(http.StatusBadRequest, "Provide school_id, listing_id, or lat and lng")
+	}
+	if radius < 100 || radius > 50000 {
+		radius = 3000
+	}
+	if limit < 1 || limit > 20 {
+		limit = 15
+	}
+
+	if s.maps.Configured() {
+		if err := s.mapsAllowed(user.ID); err != nil {
+			return err
+		}
+		places, err := s.maps.SearchNear(r.Context(), text, origin.lat, origin.lng, radius, limit)
+		if err == nil {
+			writeJSON(w, http.StatusOK, placeResult{Source: "google", Places: withDistances(places, origin)})
+			return nil
+		}
+		s.log.Warn("google search failed, using curated places", "err", err)
+	}
+	found, err := store.SearchPlaces(r.Context(), s.DB.Executor, store.PlaceSearch{Q: text, NearLat: &origin.lat, NearLng: &origin.lng})
+	if err != nil {
+		return err
+	}
+	if len(found) > limit {
+		found = found[:limit]
+	}
+	writeJSON(w, http.StatusOK, placeResult{Source: "curated", Places: curatedToPlaces(found)})
+	return nil
+}
+
+// withDistances copies the places (the originals may be cached) and stamps each with
+// its straight-line distance from the origin, nearest first.
+func withDistances(in []google.Place, origin *point) []google.Place {
+	places := append([]google.Place(nil), in...)
+	for i := range places {
+		if places[i].Latitude != nil && places[i].Longitude != nil {
+			d := geo.Round2(geo.HaversineKM(origin.lat, origin.lng, *places[i].Latitude, *places[i].Longitude))
+			places[i].DistanceKM = &d
+		}
+	}
+	sort.SliceStable(places, func(i, j int) bool {
+		a, b := places[i].DistanceKM, places[j].DistanceKM
+		if a == nil || b == nil {
+			return a != nil // places without coordinates go last
+		}
+		return *a < *b
+	})
+	return places
 }
 
 func (s *Server) curatedNearby(w http.ResponseWriter, r *http.Request, o *point, radiusKM float64, types []string, limit int) error {
@@ -241,21 +337,34 @@ func (s *Server) curatedNearby(w http.ResponseWriter, r *http.Request, o *point,
 	if len(merged) > limit {
 		merged = merged[:limit]
 	}
-	out := make([]google.Place, 0, len(merged))
-	for _, p := range merged {
+	writeJSON(w, http.StatusOK, placeResult{Source: "curated", Places: curatedToPlaces(merged)})
+	return nil
+}
+
+// curatedToPlaces shapes our own places-table rows like Google results.
+func curatedToPlaces(rows []*model.Place) []google.Place {
+	out := make([]google.Place, 0, len(rows))
+	for _, p := range rows {
 		lat, lng := p.Latitude, p.Longitude
 		gp := google.Place{
-			PlaceID: "", Name: p.Name, Latitude: &lat, Longitude: &lng, Types: []string{p.Category}, DistanceKM: p.DistanceKM,
+			Name: p.Name, Latitude: &lat, Longitude: &lng, Types: []string{p.Category}, PrimaryType: p.Category,
+			TypeLabel: labelForCategory(p.Category), DistanceKM: p.DistanceKM,
 			PhotoNames: []string{}, WeeklyHours: []string{}, Reviews: []google.Review{},
-			MapsURL: fmt.Sprintf("https://www.google.com/maps/search/?api=1&query=%.6f,%.6f", lat, lng),
 		}
 		if p.Address != nil {
 			gp.Address = *p.Address
 		}
 		out = append(out, gp)
 	}
-	writeJSON(w, http.StatusOK, placeResult{Source: "curated", Places: out})
-	return nil
+	return out
+}
+
+func labelForCategory(c string) string {
+	if c == "" {
+		return ""
+	}
+	c = strings.ReplaceAll(c, "_", " ")
+	return strings.ToUpper(c[:1]) + c[1:]
 }
 
 func splitList(s string) []string {
@@ -273,11 +382,15 @@ var errMapsOff = httpErr(http.StatusServiceUnavailable, "Google Maps is not conf
 // mapsPlaceDetails is the full Google Business profile: hours, phone, website,
 // rating, reviews, photos, "open now".
 func (s *Server) mapsPlaceDetails(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentUser(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	if !s.maps.Configured() {
 		return errMapsOff
+	}
+	if err := s.mapsAllowed(user.ID); err != nil {
+		return err
 	}
 	p, err := s.maps.Details(r.Context(), r.PathValue("place_id"))
 	if err != nil {
@@ -291,11 +404,15 @@ func (s *Server) mapsPlaceDetails(w http.ResponseWriter, r *http.Request) error 
 // mapsPhoto turns a photo name from a place into a plain image URL, so the app
 // never needs (or sees) the API key.
 func (s *Server) mapsPhoto(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentUser(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	if !s.maps.Configured() {
 		return errMapsOff
+	}
+	if err := s.mapsAllowed(user.ID); err != nil {
+		return err
 	}
 	q := newQuery(r)
 	width := 800
@@ -361,7 +478,3 @@ func nonEmpty(v ...string) []string {
 	}
 	return out
 }
-
-var _ = errors.New
-var _ = url.PathEscape
-var _ = strconv.Itoa

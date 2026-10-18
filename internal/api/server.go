@@ -31,12 +31,13 @@ type Server struct {
 	// assistant is the OpenRouter-backed Cribby AI; chats rate-limits it per user.
 	assistant *ai.Client
 	chats     *chatLimiter
+	mapsLimit *chatLimiter // per-user cap on Google-backed calls (Google bills per request)
 	log       *slog.Logger
 	mux       *http.ServeMux
 }
 
 func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, assistant *ai.Client, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), log: log, mux: http.NewServeMux()}
+	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), mapsLimit: newLimiter(150, 10*time.Minute), log: log, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
@@ -95,6 +96,7 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/maps/status", s.h(s.mapsStatus))
 	m.Handle("GET "+p+"/maps/route", s.h(s.mapsRoute))
 	m.Handle("GET "+p+"/maps/places/nearby", s.h(s.mapsNearby))
+	m.Handle("GET "+p+"/maps/places/search", s.h(s.mapsSearch))
 	m.Handle("GET "+p+"/maps/places/photo", s.h(s.mapsPhoto))
 	m.Handle("GET "+p+"/maps/places/{place_id}", s.h(s.mapsPlaceDetails))
 
