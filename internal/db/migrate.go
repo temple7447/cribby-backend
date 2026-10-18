@@ -213,6 +213,10 @@ var goMigrations = []struct {
 	{"002_school_google_place_id", []string{
 		`ALTER TABLE schools ADD COLUMN google_place_id VARCHAR(255)`,
 	}},
+	{"003_user_activity", []string{
+		`ALTER TABLE users ADD COLUMN last_login_at {TS}`,
+		`ALTER TABLE users ADD COLUMN last_active_at {TS}`,
+	}},
 }
 
 // MigrateGo applies pending Go-only migrations; call it after Migrate.

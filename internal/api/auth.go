@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -63,12 +64,23 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	s.recordLogin(r.Context(), user)
 	resp, err := s.tokenFor(user)
 	if err != nil {
 		return err
 	}
 	writeJSON(w, http.StatusOK, resp)
 	return nil
+}
+
+// recordLogin stamps the sign-in time. Best-effort: tracking must never block a login.
+func (s *Server) recordLogin(ctx context.Context, user *model.User) {
+	if err := store.TouchLogin(ctx, s.DB.Executor, user.ID); err != nil {
+		s.log.Warn("recording login failed", "err", err)
+		return
+	}
+	now := db.Now()
+	user.LastLoginAt, user.LastActiveAt = &now, &now // so the response shows it
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
@@ -90,6 +102,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		// 403, not 401 — the credentials were correct, access is what's denied.
 		return httpErr(http.StatusForbidden, "Your account has been suspended")
 	}
+	s.recordLogin(r.Context(), user)
 	resp, err := s.tokenFor(user)
 	if err != nil {
 		return err
@@ -243,6 +256,7 @@ func (s *Server) confirmPasswordReset(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return err
 	}
+	s.recordLogin(ctx, updated) // a successful reset signs the user in
 	resp, err := s.tokenFor(updated)
 	if err != nil {
 		return err

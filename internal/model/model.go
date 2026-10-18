@@ -24,6 +24,11 @@ type User struct {
 	IsSuspended                bool     `json:"is_suspended"`
 	CreatedAt                  db.Time  `json:"created_at"`
 	SchoolID                   *int     `json:"school_id"` // the school chosen from /schools, if any
+	// LastLoginAt is when they last signed in; LastActiveAt is the last time they used the
+	// app at all (refreshed at most every 10 minutes). Both are null for people who haven't
+	// been seen since tracking began.
+	LastLoginAt  *db.Time `json:"last_login_at"`
+	LastActiveAt *db.Time `json:"last_active_at"`
 }
 
 type Photo struct {

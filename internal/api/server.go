@@ -199,6 +199,9 @@ func (s *Server) currentUser(r *http.Request) (*model.User, error) {
 		// mid-session shouldn't wait for their token to expire.
 		return nil, httpErr(http.StatusForbidden, "Your account has been suspended")
 	}
+	if err := store.TouchActive(r.Context(), s.DB.Executor, user); err != nil {
+		s.log.Warn("recording activity failed", "err", err) // never fail a request over this
+	}
 	return user, nil
 }
 

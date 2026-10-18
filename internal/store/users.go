@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"campus-backend/internal/db"
 	"campus-backend/internal/model"
@@ -10,14 +11,14 @@ import (
 const userCols = `id, email, hashed_password, name, school, avatar_emoji, avatar_url, avatar_public_id,
 	verification_status, verification_code_hash, verification_code_expires_at, verification_code_last_sent_at,
 	password_reset_code_hash, password_reset_code_expires_at, password_reset_code_last_sent_at,
-	is_admin, is_suspended, created_at, school_id`
+	is_admin, is_suspended, created_at, school_id, last_login_at, last_active_at`
 
 func scanUser(s rowScanner) (model.User, error) {
 	var u model.User
 	err := s.Scan(&u.ID, &u.Email, &u.HashedPassword, &u.Name, &u.School, &u.AvatarEmoji, &u.AvatarURL, &u.AvatarPublicID,
 		&u.VerificationStatus, &u.VerificationCodeHash, &u.VerificationCodeExpiresAt, &u.VerificationCodeLastSentAt,
 		&u.PasswordResetCodeHash, &u.PasswordResetExpiresAt, &u.PasswordResetLastSentAt,
-		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.SchoolID)
+		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.SchoolID, &u.LastLoginAt, &u.LastActiveAt)
 	return u, err
 }
 
@@ -135,4 +136,24 @@ func DeleteUserCascade(ctx context.Context, tx db.Executor, userID int) error {
 		}
 	}
 	return nil
+}
+
+// TouchLogin records a sign-in (login, signup, or completing a password reset).
+func TouchLogin(ctx context.Context, ex db.Executor, id int) error {
+	now := db.Now()
+	_, err := ex.Exec(ctx, `UPDATE users SET last_login_at = ?, last_active_at = ? WHERE id = ?`, now, now, id)
+	return err
+}
+
+// ActiveRefreshInterval is how often "last active" is rewritten for a busy user — frequent
+// enough to be useful, rare enough that it adds almost no database load.
+const ActiveRefreshInterval = 10 * time.Minute
+
+// TouchActive notes that the user just used the app, if we haven't recorded that recently.
+func TouchActive(ctx context.Context, ex db.Executor, u *model.User) error {
+	if u.LastActiveAt != nil && time.Since(u.LastActiveAt.Time) < ActiveRefreshInterval {
+		return nil
+	}
+	_, err := ex.Exec(ctx, `UPDATE users SET last_active_at = ? WHERE id = ?`, db.Now(), u.ID)
+	return err
 }
