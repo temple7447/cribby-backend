@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"hash/fnv"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
@@ -16,7 +18,7 @@ import (
 
 // mapsStatus tells the app which Google features are live so it can hide the rest.
 func (s *Server) mapsStatus(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentUser(r); err != nil {
+	if _, err := s.mapsCaller(r); err != nil {
 		return err
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -79,8 +81,8 @@ func (s *Server) resolvePoint(r *http.Request, q *queryParams, prefix string) (*
 
 // mapsAllowed rate-limits Google-backed calls per user: Google bills per request, so one
 // account must not be able to run up the bill.
-func (s *Server) mapsAllowed(userID int) error {
-	if !s.mapsLimit.allow(userID, time.Now()) {
+func (s *Server) mapsAllowed(callerKey int) error {
+	if !s.mapsLimit.allow(callerKey, time.Now()) {
 		return httpErr(http.StatusTooManyRequests, "Too many map requests — please wait a few minutes and try again")
 	}
 	return nil
@@ -96,7 +98,7 @@ func (s *Server) mapsAllowed(userID int) error {
 // the app then draws a straight dashed line), so the UI always has something to show;
 // `source` says which it is.
 func (s *Server) mapsRoute(w http.ResponseWriter, r *http.Request) error {
-	user, err := s.currentUser(r)
+	caller, err := s.mapsCaller(r)
 	if err != nil {
 		return err
 	}
@@ -142,7 +144,7 @@ func (s *Server) mapsRoute(w http.ResponseWriter, r *http.Request) error {
 		"from_lat": from.lat, "from_lng": from.lng, "to_lat": to.lat, "to_lng": to.lng,
 		"polyline": "", "steps": []google.Step{},
 	}
-	if s.maps.Configured() && s.mapsLimit.allow(user.ID, time.Now()) {
+	if s.maps.Configured() && s.mapsLimit.allow(caller, time.Now()) {
 		rt, err := s.maps.Route(r.Context(), google.LatLng{Latitude: from.lat, Longitude: from.lng},
 			google.LatLng{Latitude: to.lat, Longitude: to.lng}, mode)
 		if err == nil {
@@ -185,7 +187,7 @@ var usefulPlaceTypes = []string{
 //
 // With no `type`, only useful everyday places are returned (see usefulPlaceTypes).
 func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
-	user, err := s.currentUser(r)
+	caller, err := s.mapsCaller(r)
 	if err != nil {
 		return err
 	}
@@ -217,7 +219,7 @@ func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if s.maps.Configured() {
-		if err := s.mapsAllowed(user.ID); err != nil {
+		if err := s.mapsAllowed(caller); err != nil {
 			return err
 		}
 		googleTypes := types
@@ -238,7 +240,7 @@ func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
 //
 //	/maps/places/search?q=gtbank&school_id=5&radius_m=3000&limit=10
 func (s *Server) mapsSearch(w http.ResponseWriter, r *http.Request) error {
-	user, err := s.currentUser(r)
+	caller, err := s.mapsCaller(r)
 	if err != nil {
 		return err
 	}
@@ -273,7 +275,7 @@ func (s *Server) mapsSearch(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if s.maps.Configured() {
-		if err := s.mapsAllowed(user.ID); err != nil {
+		if err := s.mapsAllowed(caller); err != nil {
 			return err
 		}
 		places, err := s.maps.SearchNear(r.Context(), text, origin.lat, origin.lng, radius, limit)
@@ -382,14 +384,14 @@ var errMapsOff = httpErr(http.StatusServiceUnavailable, "Google Maps is not conf
 // mapsPlaceDetails is the full Google Business profile: hours, phone, website,
 // rating, reviews, photos, "open now".
 func (s *Server) mapsPlaceDetails(w http.ResponseWriter, r *http.Request) error {
-	user, err := s.currentUser(r)
+	caller, err := s.mapsCaller(r)
 	if err != nil {
 		return err
 	}
 	if !s.maps.Configured() {
 		return errMapsOff
 	}
-	if err := s.mapsAllowed(user.ID); err != nil {
+	if err := s.mapsAllowed(caller); err != nil {
 		return err
 	}
 	p, err := s.maps.Details(r.Context(), r.PathValue("place_id"))
@@ -404,14 +406,14 @@ func (s *Server) mapsPlaceDetails(w http.ResponseWriter, r *http.Request) error 
 // mapsPhoto turns a photo name from a place into a plain image URL, so the app
 // never needs (or sees) the API key.
 func (s *Server) mapsPhoto(w http.ResponseWriter, r *http.Request) error {
-	user, err := s.currentUser(r)
+	caller, err := s.mapsCaller(r)
 	if err != nil {
 		return err
 	}
 	if !s.maps.Configured() {
 		return errMapsOff
 	}
-	if err := s.mapsAllowed(user.ID); err != nil {
+	if err := s.mapsAllowed(caller); err != nil {
 		return err
 	}
 	q := newQuery(r)
@@ -477,4 +479,38 @@ func nonEmpty(v ...string) []string {
 		}
 	}
 	return out
+}
+
+// mapsCaller identifies who is calling a maps endpoint, for rate limiting. Signed-in users
+// are keyed by their id. Guests (no Authorization header) may browse too — App Store
+// guideline 5.1.1(v): non-account features must work without registering — and are keyed
+// by a negative hash of their IP so they share the same per-caller cap. A token that is
+// present but invalid is still rejected, so an expired session gets the usual 401.
+func (s *Server) mapsCaller(r *http.Request) (int, error) {
+	if strings.TrimSpace(r.Header.Get("Authorization")) != "" {
+		user, err := s.currentUser(r)
+		if err != nil {
+			return 0, err
+		}
+		return user.ID, nil
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(clientIP(r)))
+	return -int(h.Sum32()&0x7fffffff) - 1, nil
+}
+
+// clientIP is the caller's address behind Cloudflare/Render's proxies.
+func clientIP(r *http.Request) string {
+	if ip := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); ip != "" {
+		return ip
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		first, _, _ := strings.Cut(xff, ",")
+		return strings.TrimSpace(first)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

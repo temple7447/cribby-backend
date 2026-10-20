@@ -13,11 +13,29 @@ func mapsFixture(t *testing.T) (e *env, token string, schoolID, listingID int) {
 	return e, token, id(unilag), e.createListingAt("Near campus", f(lat+0.01), f(lng+0.01))
 }
 
-func TestMapsEndpointsRequireLogin(t *testing.T) {
-	e := newEnv(t)
+// Guests can use the maps (App Store guideline 5.1.1(v)); a bad token is still a 401 so an
+// expired session is noticed.
+func TestMapsEndpointsOpenToGuestsButRejectBadTokens(t *testing.T) {
+	e, _, school, _ := mapsFixture(t)
+	e.expect(200, "GET", "/maps/status", "", nil)
+	e.expect(200, "GET", path("/maps/places/nearby?school_id=%d", school), "", nil)
 	for _, p := range []string{"/maps/status", "/maps/route?listing_id=1&school_id=1", "/maps/places/nearby?lat=6.5&lng=3.3", "/maps/places/x", "/maps/places/photo?name=x"} {
-		e.expect(401, "GET", p, "", nil)
+		e.expect(401, "GET", p, "not-a-real-token", nil)
 	}
+}
+
+func TestGuestMapsAreRateLimitedPerIP(t *testing.T) {
+	e, token, school, _ := mapsFixture(t)
+	for i := 0; i < 150; i++ {
+		if code, _ := e.do("GET", path("/maps/places/nearby?school_id=%d&type=bank&radius_m=%d", school, 1000+i), "", nil); code != 200 {
+			t.Fatalf("guest request %d: %d", i+1, code)
+		}
+	}
+	if code, _ := e.do("GET", path("/maps/places/nearby?school_id=%d&type=bank&radius_m=9999", school), "", nil); code != 429 {
+		t.Fatalf("151st guest request: %d, want 429", code)
+	}
+	// a signed-in user has their own allowance
+	e.expect(200, "GET", path("/maps/places/nearby?school_id=%d&type=bank", school), token, nil)
 }
 
 func TestMapsStatus(t *testing.T) {
@@ -280,7 +298,7 @@ func TestSearchValidationAndFallback(t *testing.T) {
 	e.expect(422, "GET", path("/maps/places/search?q=a&school_id=%d", school), token, nil)
 	e.expect(422, "GET", path("/maps/places/search?q=%s&school_id=%d", strings.Repeat("x", 81), school), token, nil)
 	e.expect(400, "GET", "/maps/places/search?q=gtbank", token, nil)
-	e.expect(401, "GET", path("/maps/places/search?q=gtbank&school_id=%d", school), "", nil)
+	e.expect(200, "GET", path("/maps/places/search?q=gtbank&school_id=%d", school), "", nil) // guests welcome
 
 	// Google off → our curated places, matched by name, still with distances
 	e.google.disable()

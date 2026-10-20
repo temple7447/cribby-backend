@@ -92,7 +92,7 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/schools", s.h(s.listSchools))
 	m.Handle("GET "+p+"/schools/{school_id}", s.h(s.getSchool))
 
-	// google maps (auth required: Google bills per call)
+	// google maps (open to guests, rate-limited per user or per IP: Google bills per call)
 	m.Handle("GET "+p+"/maps/status", s.h(s.mapsStatus))
 	m.Handle("GET "+p+"/maps/route", s.h(s.mapsRoute))
 	m.Handle("GET "+p+"/maps/places/nearby", s.h(s.mapsNearby))
