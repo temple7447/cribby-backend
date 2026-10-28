@@ -21,7 +21,7 @@ func listingTargets(l *model.Listing) []any {
 	return []any{&l.ID, &l.Title, &l.Type, &l.PricePer, &l.Total, &l.UtilitiesMonthly, &l.Deposit, &l.Walk,
 		&l.Latitude, &l.Longitude, &l.Rating, &l.Reviews, &l.Verified, &l.Hot, &l.Video, &l.IsHidden,
 		&l.Grad, &l.Emoji, &l.Amenities, &l.Photos, &l.LandlordName, &l.LandlordVerified,
-		&l.LandlordResponseRate, &l.CreatedAt}
+		&l.LandlordResponseRate, &l.CreatedAt, &l.OwnerID, &l.Status, &l.Description, &l.Address, &l.ReviewNote}
 }
 
 func userTargets(u *model.User) []any {

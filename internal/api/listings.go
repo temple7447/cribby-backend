@@ -63,7 +63,7 @@ func (s *Server) getListing(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if l == nil {
+	if l == nil || (l.Status != model.ListingApproved && !s.canManageListing(r, l)) {
 		return httpErr(http.StatusNotFound, "Listing not found")
 	}
 	// ?school_id=N adds distance_km from that school to this listing.
@@ -79,13 +79,16 @@ func (s *Server) getListing(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Creating and photo management are admin-only for now — listings aren't owned
-// by a User account yet (landlord_name is free text), so there's no "is this my
-// listing" check to make. Revisit once real landlord accounts exist.
-
+// createListing: admins create published listings with every field (seed/ops tooling);
+// any other signed-in user posts their own apartment, which waits for admin review
+// (see user_listings.go).
 func (s *Server) createListing(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentAdmin(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
+	}
+	if !user.IsAdmin {
+		return s.postUserListing(w, r, user)
 	}
 	p := struct {
 		Title                string   `json:"title" validate:"required"`
@@ -130,7 +133,8 @@ func (s *Server) createListing(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) uploadListingPhoto(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentAdmin(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	id, err := pathInt(r, "listing_id")
@@ -151,6 +155,12 @@ func (s *Server) uploadListingPhoto(w http.ResponseWriter, r *http.Request) erro
 	if listing == nil {
 		return httpErr(http.StatusNotFound, "Listing not found")
 	}
+	if err := ownsListing(user, listing); err != nil {
+		return err
+	}
+	if !user.IsAdmin && len(listing.Photos) >= maxListingPhotos {
+		return httpErr(http.StatusUnprocessableEntity, "A listing can have at most "+itoa(maxListingPhotos)+" photos")
+	}
 	uploaded, err := s.uploadImage(ctx, up, "cribby/listings/"+itoa(id), storage.TransformListing)
 	if err != nil {
 		return err
@@ -163,11 +173,15 @@ func (s *Server) uploadListingPhoto(w http.ResponseWriter, r *http.Request) erro
 	if err := store.SetListingPhotos(ctx, ex, id, photos); err != nil {
 		return err
 	}
+	if err := s.repend(ctx, user, listing); err != nil {
+		return err
+	}
 	return s.respondListing(w, r, id)
 }
 
 func (s *Server) deleteListingPhoto(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentAdmin(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	id, err := pathInt(r, "listing_id")
@@ -182,6 +196,9 @@ func (s *Server) deleteListingPhoto(w http.ResponseWriter, r *http.Request) erro
 	}
 	if listing == nil {
 		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	if err := ownsListing(user, listing); err != nil {
+		return err
 	}
 	var match *model.Photo
 	kept := db.JSONList[model.Photo]{}

@@ -65,7 +65,20 @@ type Listing struct {
 	LandlordVerified     bool                `json:"landlord_verified"`
 	LandlordResponseRate int                 `json:"landlord_response_rate"`
 	CreatedAt            db.Time             `json:"created_at"`
+	OwnerID              *int                `json:"owner_id"`    // the user who posted it; nil for admin-made listings
+	Status               string              `json:"status"`      // pending | approved | rejected | removed
+	Description          string              `json:"description"` // free text from the poster
+	Address              string              `json:"address"`
+	ReviewNote           *string             `json:"review_note"` // why an admin rejected it, shown to the owner
 }
+
+// Listing statuses. Only approved listings are public.
+const (
+	ListingPending  = "pending"
+	ListingApproved = "approved"
+	ListingRejected = "rejected"
+	ListingRemoved  = "removed" // taken down by its owner (e.g. rented out)
+)
 
 func (l *Listing) Coords() (*float64, *float64) { return l.Latitude, l.Longitude }
 func (l *Listing) SetDistance(km float64)       { l.DistanceKM = &km }

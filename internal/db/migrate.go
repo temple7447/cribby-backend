@@ -217,6 +217,17 @@ var goMigrations = []struct {
 		`ALTER TABLE users ADD COLUMN last_login_at {TS}`,
 		`ALTER TABLE users ADD COLUMN last_active_at {TS}`,
 	}},
+	// Users can post their own apartments. Existing (admin-made) listings are owner-less and
+	// stay "approved"; a user's post starts "pending" until an admin reviews it.
+	{"004_user_listings", []string{
+		`ALTER TABLE listings ADD COLUMN owner_id INTEGER`,
+		`ALTER TABLE listings ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'approved'`,
+		`ALTER TABLE listings ADD COLUMN description TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE listings ADD COLUMN address VARCHAR(300) NOT NULL DEFAULT ''`,
+		`ALTER TABLE listings ADD COLUMN review_note VARCHAR(500)`,
+		`CREATE INDEX ix_listings_owner_id ON listings (owner_id)`,
+		`CREATE INDEX ix_listings_status ON listings (status)`,
+	}},
 }
 
 // MigrateGo applies pending Go-only migrations; call it after Migrate.

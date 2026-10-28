@@ -77,7 +77,12 @@ func (s *Server) routes() {
 	// listings
 	m.Handle("GET "+p+"/listings", s.h(s.listListings))
 	m.Handle("POST "+p+"/listings", s.h(s.createListing))
+	m.Handle("GET "+p+"/listings/mine", s.h(s.listMyListings))
 	m.Handle("GET "+p+"/listings/{listing_id}", s.h(s.getListing))
+	m.Handle("PATCH "+p+"/listings/{listing_id}", s.h(s.updateListing))
+	m.Handle("DELETE "+p+"/listings/{listing_id}", s.h(s.deleteListing))
+	m.Handle("GET "+p+"/admin/listings", s.h(s.adminListListings))
+	m.Handle("PATCH "+p+"/admin/listings/{listing_id}/review", s.h(s.adminReviewListing))
 	m.Handle("POST "+p+"/listings/{listing_id}/photos", s.h(s.uploadListingPhoto))
 	m.Handle("DELETE "+p+"/listings/{listing_id}/photos/{photo_id}", s.h(s.deleteListingPhoto))
 

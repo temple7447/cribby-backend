@@ -12,7 +12,7 @@ import (
 func ListFavoriteListings(ctx context.Context, ex db.Executor, userID int) ([]model.Listing, error) {
 	return queryList(ctx, ex, scanListing,
 		`SELECT `+prefix("l", listingCols)+` FROM favorites f JOIN listings l ON l.id = f.listing_id
-		 WHERE f.user_id = ? ORDER BY f.id`, userID)
+		 WHERE f.user_id = ? AND l.status = 'approved' ORDER BY f.id`, userID)
 }
 
 // AddFavorite is idempotent: favouriting twice is a no-op.

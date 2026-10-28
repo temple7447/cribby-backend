@@ -158,7 +158,7 @@ func TestWrongMethodIs405WithAllowHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 405 || resp.Header.Get("Allow") != "GET" {
+	if resp.StatusCode != 405 || resp.Header.Get("Allow") != "GET, PATCH, DELETE" {
 		t.Fatalf("status=%d allow=%q", resp.StatusCode, resp.Header.Get("Allow"))
 	}
 	// a path that exists for several methods lists them all

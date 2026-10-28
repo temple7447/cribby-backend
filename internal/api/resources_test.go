@@ -17,10 +17,8 @@ func adminEnv(t *testing.T) (*env, string) {
 
 // ---- listings (tests/test_listing_photos.py) ----
 
-func TestCreateListingRequiresAdmin(t *testing.T) {
+func TestCreateListingRequiresLogin(t *testing.T) {
 	e := newEnv(t)
-	token, _ := e.signup("plain5@gmail.com")
-	e.expect(403, "POST", "/listings", token, obj{"title": "Test place", "type": "Studio", "price_per": 500, "total": 500, "deposit": 500, "walk": 10})
 	e.expect(401, "POST", "/listings", "", obj{})
 }
 
