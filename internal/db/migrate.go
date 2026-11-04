@@ -228,6 +228,12 @@ var goMigrations = []struct {
 		`CREATE INDEX ix_listings_owner_id ON listings (owner_id)`,
 		`CREATE INDEX ix_listings_status ON listings (status)`,
 	}},
+	// A public, username-style handle chosen at sign-up (the full name stays private). Empty for
+	// accounts made before this existed or in the app; unique ignoring case when set.
+	{"005_display_name", []string{
+		`ALTER TABLE users ADD COLUMN display_name VARCHAR(40) NOT NULL DEFAULT ''`,
+		`CREATE UNIQUE INDEX uq_users_display_name ON users (LOWER(display_name)) WHERE display_name <> ''`,
+	}},
 }
 
 // MigrateGo applies pending Go-only migrations; call it after Migrate.

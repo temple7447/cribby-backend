@@ -104,6 +104,15 @@ func (s *Server) walkMinutes(ctx context.Context, user *model.User, lat, lng flo
 	return int(math.Min(999, math.Ceil(km/walkSpeedKMH*60)))
 }
 
+// publicName is what other people see for this user: the display name when they have one,
+// otherwise their name (accounts made in the app have no display name yet).
+func publicName(u *model.User) string {
+	if u.DisplayName != "" {
+		return u.DisplayName
+	}
+	return u.Name
+}
+
 func (s *Server) postUserListing(w http.ResponseWriter, r *http.Request, user *model.User) error {
 	var in listingInput
 	if err := bindJSON(r, &in); err != nil {
@@ -129,7 +138,7 @@ func (s *Server) postUserListing(w http.ResponseWriter, r *http.Request, user *m
 		Title: in.Title, Type: in.Type, PricePer: in.PricePer, Total: total, UtilitiesMonthly: in.UtilitiesMonthly,
 		Deposit: in.Deposit, Walk: s.walkMinutes(ctx, user, *in.Latitude, *in.Longitude),
 		Latitude: in.Latitude, Longitude: in.Longitude, Grad: "from-coral to-sunshine", Emoji: "🏠",
-		Amenities: in.Amenities, LandlordName: user.Name, OwnerID: &owner, Status: model.ListingPending,
+		Amenities: in.Amenities, LandlordName: publicName(user), OwnerID: &owner, Status: model.ListingPending,
 		Description: in.Description, Address: in.Address,
 	})
 	if err != nil {

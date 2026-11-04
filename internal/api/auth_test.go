@@ -382,3 +382,55 @@ func TestDeleteCascadesOwnedData(t *testing.T) {
 }
 
 func itoa(n int) string { return path("%d", n) }
+
+// ---- display name (public, username-style handle) ----
+
+func TestSignupStoresDisplayNameAndKeepsFullNamePrivate(t *testing.T) {
+	e := newEnv(t)
+	out := e.expect(200, "POST", "/auth/signup", "", obj{
+		"email": "ada@gmail.com", "password": "pw123456", "name": "Adaeze Okafor", "display_name": "  okafor_homes ",
+	}).(obj)
+	user := out["user"].(obj)
+	if user["display_name"] != "okafor_homes" || user["name"] != "Adaeze Okafor" {
+		t.Fatalf("got %v", user)
+	}
+	// the listing shows the handle to students, never the full name
+	token := out["access_token"].(string)
+	l := e.expect(201, "POST", "/listings", token, apartment("Akoka self-contain")).(obj)
+	if l["landlord_name"] != "okafor_homes" {
+		t.Fatalf("landlord_name = %v", l["landlord_name"])
+	}
+}
+
+func TestSignupWithoutDisplayNameStillWorks(t *testing.T) {
+	// the mobile app doesn't send one; the landlord name falls back to the full name
+	e := newEnv(t)
+	token, user := e.signup("appuser@gmail.com")
+	if user["display_name"] != "" {
+		t.Fatalf("display_name = %v", user["display_name"])
+	}
+	l := e.expect(201, "POST", "/listings", token, apartment("Room")).(obj)
+	if l["landlord_name"] != user["name"] {
+		t.Fatalf("landlord_name = %v, want %v", l["landlord_name"], user["name"])
+	}
+}
+
+func TestDisplayNameIsUniqueIgnoringCase(t *testing.T) {
+	e := newEnv(t)
+	e.expect(200, "POST", "/auth/signup", "", obj{"email": "a@gmail.com", "password": "pw123456", "name": "A", "display_name": "Okafor.Homes"})
+	e.expect(400, "POST", "/auth/signup", "", obj{"email": "b@gmail.com", "password": "pw123456", "name": "B", "display_name": "okafor.homes"})
+	// the failed attempt must not have created an account
+	if n := e.count(`SELECT COUNT(*) FROM users WHERE email = ?`, "b@gmail.com"); n != 0 {
+		t.Fatalf("account created despite taken display name: %d", n)
+	}
+	// users without a display name never collide with each other
+	e.expect(200, "POST", "/auth/signup", "", obj{"email": "c@gmail.com", "password": "pw123456", "name": "C"})
+	e.expect(200, "POST", "/auth/signup", "", obj{"email": "d@gmail.com", "password": "pw123456", "name": "D"})
+}
+
+func TestDisplayNameFormatIsValidated(t *testing.T) {
+	e := newEnv(t)
+	for _, bad := range []string{"ab", "has space", "emoji🏠name", strings.Repeat("x", 31), "<script>"} {
+		e.expect(422, "POST", "/auth/signup", "", obj{"email": "x@gmail.com", "password": "pw123456", "name": "X", "display_name": bad})
+	}
+}

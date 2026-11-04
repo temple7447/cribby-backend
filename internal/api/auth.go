@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	"campus-backend/internal/security"
 	"campus-backend/internal/store"
 )
+
+// displayNamePattern: a username-style handle (the full name is kept private).
+var displayNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{3,30}$`)
 
 type tokenResponse struct {
 	AccessToken string     `json:"access_token"`
@@ -29,8 +33,10 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required"`
 		Name     string `json:"name" validate:"required"`
-		School   string `json:"school"`
-		SchoolID *int   `json:"school_id"` // optional: a school picked from /schools
+		// DisplayName is optional (the app doesn't send it); the website requires it.
+		DisplayName string `json:"display_name"`
+		School      string `json:"school"`
+		SchoolID    *int   `json:"school_id"` // optional: a school picked from /schools
 	}{School: "State University"}
 	if err := bindJSON(r, &p); err != nil {
 		return err
@@ -42,6 +48,19 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	}
 	if exists != nil {
 		return httpErr(http.StatusBadRequest, "Email already registered")
+	}
+	p.DisplayName = strings.TrimSpace(p.DisplayName)
+	if p.DisplayName != "" {
+		if !displayNamePattern.MatchString(p.DisplayName) {
+			return httpErr(http.StatusUnprocessableEntity, "Display name must be 3–30 characters: letters, numbers, dots, dashes or underscores")
+		}
+		taken, err := store.UserByDisplayName(ctx, s.DB.Executor, p.DisplayName)
+		if err != nil {
+			return err
+		}
+		if taken != nil {
+			return httpErr(http.StatusBadRequest, "That display name is taken — try another")
+		}
 	}
 	if p.SchoolID != nil {
 		picked, err := store.SchoolByID(ctx, s.DB.Executor, *p.SchoolID)
@@ -57,8 +76,13 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	user, err := store.CreateUser(ctx, s.DB.Executor, p.Email, hash, p.Name, p.School, p.SchoolID)
+	user, err := store.CreateUser(ctx, s.DB.Executor, p.Email, hash, p.Name, p.DisplayName, p.School, p.SchoolID)
 	if db.IsUniqueViolation(err) { // lost a race with a concurrent signup
+		if p.DisplayName != "" {
+			if taken, lookupErr := store.UserByDisplayName(ctx, s.DB.Executor, p.DisplayName); lookupErr == nil && taken != nil {
+				return httpErr(http.StatusBadRequest, "That display name is taken — try another")
+			}
+		}
 		return httpErr(http.StatusBadRequest, "Email already registered")
 	}
 	if err != nil {

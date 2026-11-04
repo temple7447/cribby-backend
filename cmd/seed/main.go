@@ -138,7 +138,7 @@ func seedDemo(ctx context.Context, d *db.DB) error {
 		if err != nil {
 			return err
 		}
-		maya, err := store.CreateUser(ctx, tx, "maya@stateuniversity.edu", hash, "Maya Chen", "State University", nil)
+		maya, err := store.CreateUser(ctx, tx, "maya@stateuniversity.edu", hash, "Maya Chen", "", "State University", nil)
 		if err != nil {
 			return err
 		}
@@ -162,7 +162,7 @@ func seedDemo(ctx context.Context, d *db.DB) error {
 			}
 		}
 		for _, rm := range roommates {
-			u, err := store.CreateUser(ctx, tx, fmt.Sprintf("%s@stateuniversity.edu", lower(rm.Name)), hash, rm.Name, rm.School, nil)
+			u, err := store.CreateUser(ctx, tx, fmt.Sprintf("%s@stateuniversity.edu", lower(rm.Name)), hash, rm.Name, "", rm.School, nil)
 			if err != nil {
 				return err
 			}

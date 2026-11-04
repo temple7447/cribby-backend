@@ -11,14 +11,12 @@ import (
 const userCols = `id, email, hashed_password, name, school, avatar_emoji, avatar_url, avatar_public_id,
 	verification_status, verification_code_hash, verification_code_expires_at, verification_code_last_sent_at,
 	password_reset_code_hash, password_reset_code_expires_at, password_reset_code_last_sent_at,
-	is_admin, is_suspended, created_at, school_id, last_login_at, last_active_at`
+	is_admin, is_suspended, created_at, school_id, last_login_at, last_active_at, display_name`
 
+// scanUser reads a row of userCols; the targets live in userTargets so the two can't drift apart.
 func scanUser(s rowScanner) (model.User, error) {
 	var u model.User
-	err := s.Scan(&u.ID, &u.Email, &u.HashedPassword, &u.Name, &u.School, &u.AvatarEmoji, &u.AvatarURL, &u.AvatarPublicID,
-		&u.VerificationStatus, &u.VerificationCodeHash, &u.VerificationCodeExpiresAt, &u.VerificationCodeLastSentAt,
-		&u.PasswordResetCodeHash, &u.PasswordResetExpiresAt, &u.PasswordResetLastSentAt,
-		&u.IsAdmin, &u.IsSuspended, &u.CreatedAt, &u.SchoolID, &u.LastLoginAt, &u.LastActiveAt)
+	err := s.Scan(userTargets(&u)...)
 	return u, err
 }
 
@@ -28,6 +26,11 @@ func UserByID(ctx context.Context, ex db.Executor, id int) (*model.User, error) 
 
 func UserByEmail(ctx context.Context, ex db.Executor, email string) (*model.User, error) {
 	return queryOne(ctx, ex, scanUser, `SELECT `+userCols+` FROM users WHERE email = ?`, email)
+}
+
+// UserByDisplayName finds who holds a display name (case-insensitive), or nil.
+func UserByDisplayName(ctx context.Context, ex db.Executor, displayName string) (*model.User, error) {
+	return queryOne(ctx, ex, scanUser, `SELECT `+userCols+` FROM users WHERE display_name <> '' AND LOWER(display_name) = LOWER(?)`, displayName)
 }
 
 func ListUsers(ctx context.Context, ex db.Executor) ([]model.User, error) {
@@ -41,9 +44,9 @@ func ListAdminEmails(ctx context.Context, ex db.Executor) ([]string, error) {
 	}, `SELECT email FROM users WHERE is_admin = ? ORDER BY id`, true)
 }
 
-func CreateUser(ctx context.Context, ex db.Executor, email, hashedPassword, name, school string, schoolID *int) (*model.User, error) {
-	id, err := ex.InsertID(ctx, `INSERT INTO users (email, hashed_password, name, school, school_id, avatar_emoji, verification_status, is_admin, is_suspended)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, email, hashedPassword, name, school, schoolID, "🎓", "unverified", false, false)
+func CreateUser(ctx context.Context, ex db.Executor, email, hashedPassword, name, displayName, school string, schoolID *int) (*model.User, error) {
+	id, err := ex.InsertID(ctx, `INSERT INTO users (email, hashed_password, name, display_name, school, school_id, avatar_emoji, verification_status, is_admin, is_suspended)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, email, hashedPassword, name, displayName, school, schoolID, "🎓", "unverified", false, false)
 	if err != nil {
 		return nil, err
 	}
