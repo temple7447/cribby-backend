@@ -44,6 +44,9 @@ func TestCORS(t *testing.T) {
 	}{
 		{"http://localhost:8081", true},
 		{"https://admin.cribby.space", true},
+		{"https://www.cribby.space", true},
+		{"https://cribby.space", true},
+		{"http://localhost:5173", true},
 		{"http://192.168.1.50:8081", true}, // LAN dev origin (phone testing the Expo web build)
 		{"http://10.0.0.7:19006", true},
 		{"http://172.20.3.4:3000", true},

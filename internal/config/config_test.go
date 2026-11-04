@@ -18,7 +18,7 @@ func TestDefaultsMatchThePythonSettings(t *testing.T) {
 		c.EmailVerifyExpireMinutes != 30 || c.EmailVerifyCooldownSeconds != 60 || c.Port != "8000" {
 		t.Fatalf("got %+v", c)
 	}
-	if len(c.BackendCORSOrigins) != 5 || c.BackendCORSOrigins[4] != "https://admin.cribby.space" {
+	if len(c.BackendCORSOrigins) != 8 || c.BackendCORSOrigins[4] != "https://admin.cribby.space" || c.BackendCORSOrigins[5] != "https://www.cribby.space" {
 		t.Fatalf("cors %v", c.BackendCORSOrigins)
 	}
 }

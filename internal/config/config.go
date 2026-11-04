@@ -61,6 +61,9 @@ func Load() *Settings {
 			"http://localhost:19006",
 			"http://localhost:5180",
 			"https://admin.cribby.space",
+			"https://www.cribby.space", // the public website (landlords register and post from here)
+			"https://cribby.space",
+			"http://localhost:5173", // cribby-web dev server
 		}),
 
 		ResendAPIKey:               str("RESEND_API_KEY", ""),
