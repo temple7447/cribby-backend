@@ -102,6 +102,7 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/maps/route", s.h(s.mapsRoute))
 	m.Handle("GET "+p+"/maps/places/nearby", s.h(s.mapsNearby))
 	m.Handle("GET "+p+"/maps/places/search", s.h(s.mapsSearch))
+	m.Handle("GET "+p+"/maps/geocode/reverse", s.h(s.mapsReverseGeocode))
 	m.Handle("GET "+p+"/maps/places/photo", s.h(s.mapsPhoto))
 	m.Handle("GET "+p+"/maps/places/{place_id}", s.h(s.mapsPlaceDetails))
 

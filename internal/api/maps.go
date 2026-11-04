@@ -23,7 +23,7 @@ func (s *Server) mapsStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"enabled":  s.maps.Configured(),
-		"features": []string{"route", "route_steps", "nearby_businesses", "search", "place_details", "photos"},
+		"features": []string{"route", "route_steps", "nearby_businesses", "search", "place_details", "photos", "reverse_geocode"},
 	})
 	return nil
 }
@@ -513,4 +513,38 @@ func clientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+// mapsReverseGeocode: the address at a map pin, for the "post an apartment" form.
+//
+//	/maps/geocode/reverse?lat=6.5&lng=3.39   ->  {"address": "...", "source": "google"|"openstreetmap"|"none"}
+//
+// Always 200 for a valid point: "none" just means nobody could name the spot, and the poster
+// types the address themselves.
+func (s *Server) mapsReverseGeocode(w http.ResponseWriter, r *http.Request) error {
+	caller, err := s.mapsCaller(r)
+	if err != nil {
+		return err
+	}
+	q := newQuery(r)
+	lat, lng := q.optFloat("lat"), q.optFloat("lng")
+	if err := q.err(); err != nil {
+		return err
+	}
+	if lat == nil || lng == nil || *lat < -90 || *lat > 90 || *lng < -180 || *lng > 180 {
+		return httpErr(http.StatusBadRequest, "Provide a valid lat and lng")
+	}
+	if err := s.mapsAllowed(caller); err != nil {
+		return err
+	}
+	addr, err := s.maps.ReverseGeocode(r.Context(), *lat, *lng)
+	if err != nil {
+		s.log.Warn("reverse geocoding failed", "err", err)
+	}
+	if addr == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"address": "", "source": "none"})
+		return nil
+	}
+	writeJSON(w, http.StatusOK, addr)
+	return nil
 }

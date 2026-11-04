@@ -3,6 +3,7 @@
 //   - Places API (New): business search/details — name, address, rating, opening
 //     hours, phone, website, reviews, photos, "open now"
 //   - Routes API: real walking / driving distance and time
+//   - Geocoding API (with an OpenStreetMap Nominatim fallback): pin -> address
 //
 // The API key lives only on the server (GOOGLE_MAPS_API_KEY); the mobile app never
 // sees it. Every call is cached briefly because Google bills per request.
@@ -30,18 +31,23 @@ type Client struct {
 	APIKey    string
 	PlacesURL string // overridable for tests
 	RoutesURL string
-	HTTP      *http.Client
-	cache     sync.Map // key -> cacheEntry
-	CacheTTL  time.Duration
+	// GeocodeURL / NominatimURL: reverse geocoding (pin -> address); overridable for tests.
+	GeocodeURL   string
+	NominatimURL string
+	HTTP         *http.Client
+	cache        sync.Map // key -> cacheEntry
+	CacheTTL     time.Duration
 }
 
 func New(apiKey string) *Client {
 	return &Client{
-		APIKey:    apiKey,
-		PlacesURL: "https://places.googleapis.com/v1",
-		RoutesURL: "https://routes.googleapis.com/directions/v2:computeRoutes",
-		HTTP:      &http.Client{Timeout: 10 * time.Second},
-		CacheTTL:  10 * time.Minute,
+		APIKey:       apiKey,
+		PlacesURL:    "https://places.googleapis.com/v1",
+		RoutesURL:    "https://routes.googleapis.com/directions/v2:computeRoutes",
+		GeocodeURL:   "https://maps.googleapis.com/maps/api/geocode/json",
+		NominatimURL: "https://nominatim.openstreetmap.org/reverse",
+		HTTP:         &http.Client{Timeout: 10 * time.Second},
+		CacheTTL:     10 * time.Minute,
 	}
 }
 

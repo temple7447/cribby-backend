@@ -102,6 +102,7 @@ type fakeGoogle struct {
 	// where text search "finds" things
 	textLat, textLng float64
 	failRoutes       bool
+	failGeocode      bool                      // Google geocoder answers REQUEST_DENIED (API not enabled)
 	bodies           map[string]map[string]any // last request body per endpoint
 }
 
@@ -161,8 +162,26 @@ func newFakeGoogle() *fakeGoogle {
 		  {"navigationInstruction":{"instructions":"Turn left onto Akoka Rd"},"distanceMeters":1500,"staticDuration":"1080s"},
 		  {"distanceMeters":10,"staticDuration":"5s"}]}]}]}`)
 	})
+	mux.HandleFunc("GET /geocode", func(w http.ResponseWriter, r *http.Request) {
+		rec("geocode")
+		if f.failGeocode {
+			fmt.Fprint(w, `{"status":"REQUEST_DENIED","error_message":"The Geocoding API is not enabled","results":[]}`)
+			return
+		}
+		fmt.Fprint(w, `{"status":"OK","results":[{"formatted_address":"12 Adeola St, Akoka, Lagos, Nigeria"}]}`)
+	})
+	mux.HandleFunc("GET /nominatim", func(w http.ResponseWriter, r *http.Request) {
+		rec("nominatim")
+		if !strings.Contains(r.Header.Get("User-Agent"), "Cribby") {
+			http.Error(w, "no UA", 403)
+			return
+		}
+		fmt.Fprint(w, `{"display_name":"long display name","address":{"house_number":"7","road":"Opayemi Street","suburb":"Bariga","city":"Lagos","state":"Lagos"}}`)
+	})
 	f.srv = httptest.NewServer(mux)
 	f.client = google.New("test-key")
+	f.client.GeocodeURL = f.srv.URL + "/geocode"
+	f.client.NominatimURL = f.srv.URL + "/nominatim"
 	f.client.PlacesURL = f.srv.URL
 	f.client.RoutesURL = f.srv.URL + "/routes"
 	return f

@@ -368,3 +368,41 @@ func TestGoogleBackedCallsAreRateLimitedPerUser(t *testing.T) {
 		t.Fatalf("got %v", out)
 	}
 }
+
+func TestReverseGeocodeUsesGoogleAndCaches(t *testing.T) {
+	e, token, _, _ := mapsFixture(t)
+	out := e.expect(200, "GET", "/maps/geocode/reverse?lat=6.5180&lng=3.3910", token, nil).(obj)
+	if out["source"] != "google" || out["address"] != "12 Adeola St, Akoka, Lagos, Nigeria" {
+		t.Fatalf("got %v", out)
+	}
+	e.expect(200, "GET", "/maps/geocode/reverse?lat=6.5180&lng=3.3910", token, nil)
+	if n := e.google.called("geocode"); n != 1 {
+		t.Fatalf("google geocoder called %d times, want 1 (cache)", n)
+	}
+}
+
+func TestReverseGeocodeFallsBackToOpenStreetMap(t *testing.T) {
+	// Google's Geocoding API isn't enabled on every key — the form must still get an address.
+	e, token, _, _ := mapsFixture(t)
+	e.google.failGeocode = true
+	out := e.expect(200, "GET", "/maps/geocode/reverse?lat=6.52&lng=3.39", token, nil).(obj)
+	if out["source"] != "openstreetmap" || out["address"] != "7 Opayemi Street, Bariga, Lagos" {
+		t.Fatalf("got %v", out)
+	}
+	// and with Google switched off entirely
+	e.google.disable()
+	out = e.expect(200, "GET", "/maps/geocode/reverse?lat=6.53&lng=3.39", token, nil).(obj)
+	if out["source"] != "openstreetmap" {
+		t.Fatalf("got %v", out)
+	}
+}
+
+func TestReverseGeocodeValidatesInput(t *testing.T) {
+	e, token, _, _ := mapsFixture(t)
+	for _, p := range []string{"/maps/geocode/reverse", "/maps/geocode/reverse?lat=6.5", "/maps/geocode/reverse?lat=91&lng=3", "/maps/geocode/reverse?lat=6.5&lng=181"} {
+		if code, _ := e.do("GET", p, token, nil); code != 400 && code != 422 {
+			t.Fatalf("%s -> %d, want 400/422", p, code)
+		}
+	}
+	e.expect(401, "GET", "/maps/geocode/reverse?lat=6.5&lng=3.3", "not-a-real-token", nil)
+}
