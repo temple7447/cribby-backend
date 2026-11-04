@@ -102,3 +102,41 @@ func TestCloudinaryErrorsAndNotConfigured(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestPlayableVideoURLForcesH264MP4(t *testing.T) {
+	cases := map[string]string{
+		"https://res.cloudinary.com/c/video/upload/v123/cribby/listings/7/video/abc.mov": "https://res.cloudinary.com/c/video/upload/f_mp4,vc_h264,q_auto/v123/cribby/listings/7/video/abc.mp4",
+		"https://res.cloudinary.com/c/video/upload/v1/x/clip.mp4":                        "https://res.cloudinary.com/c/video/upload/f_mp4,vc_h264,q_auto/v1/x/clip.mp4",
+		"https://res.cloudinary.com/c/video/upload/v1/x/noext":                           "https://res.cloudinary.com/c/video/upload/f_mp4,vc_h264,q_auto/v1/x/noext.mp4",
+		"https://elsewhere.example/clip.mp4":                                             "https://elsewhere.example/clip.mp4", // not Cloudinary: untouched
+	}
+	for in, want := range cases {
+		if got := playableVideoURL(in); got != want {
+			t.Errorf("playableVideoURL(%q)\n got  %s\n want %s", in, got, want)
+		}
+	}
+}
+
+func TestUploadVideoUsesVideoEndpointAndDestroyToo(t *testing.T) {
+	var paths []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		_, _ = w.Write([]byte(`{"secure_url":"https://res.cloudinary.com/mycloud/video/upload/v9/cribby/v.mov","public_id":"cribby/v"}`))
+	}))
+	defer srv.Close()
+	c := NewCloudinary("mycloud", "key", "secret")
+	c.BaseURL = srv.URL
+	up, err := c.UploadVideo(context.Background(), []byte("vid"), "cribby/listings/1/video")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if up.PublicID != "cribby/v" || !strings.HasSuffix(up.URL, "/f_mp4,vc_h264,q_auto/v9/cribby/v.mp4") {
+		t.Fatalf("got %+v", up)
+	}
+	if err := c.DestroyVideo(context.Background(), "cribby/v"); err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) != 2 || paths[0] != "/v1_1/mycloud/video/upload" || paths[1] != "/v1_1/mycloud/video/destroy" {
+		t.Fatalf("paths %v", paths)
+	}
+}

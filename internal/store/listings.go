@@ -12,7 +12,7 @@ import (
 const listingCols = `id, title, type, price_per, total, utilities_monthly, deposit, walk, latitude, longitude,
 	rating, reviews, verified, hot, video, is_hidden, grad, emoji, amenities, photos,
 	landlord_name, landlord_verified, landlord_response_rate, created_at,
-	owner_id, status, description, address, review_note`
+	owner_id, status, description, address, review_note, video_url, video_public_id`
 
 func scanListing(s rowScanner) (model.Listing, error) {
 	var l model.Listing
@@ -119,6 +119,14 @@ func SetListingStatus(ctx context.Context, ex db.Executor, id int, status string
 
 func SetListingPhotos(ctx context.Context, ex db.Executor, id int, photos db.JSONList[model.Photo]) error {
 	_, err := ex.Exec(ctx, `UPDATE listings SET photos = ? WHERE id = ?`, photos, id)
+	return err
+}
+
+// SetListingVideo attaches (or, with nils, removes) the listing's video and keeps the `video`
+// flag in step with it.
+func SetListingVideo(ctx context.Context, ex db.Executor, id int, url, publicID *string) error {
+	_, err := ex.Exec(ctx, `UPDATE listings SET video_url = ?, video_public_id = ?, video = ? WHERE id = ?`,
+		url, publicID, url != nil, id)
 	return err
 }
 

@@ -232,3 +232,91 @@ func (s *Server) respondListing(w http.ResponseWriter, r *http.Request, id int) 
 	writeJSON(w, http.StatusOK, l)
 	return nil
 }
+
+// uploadListingVideo attaches (or replaces) the listing's single walkthrough video.
+func (s *Server) uploadListingVideo(w http.ResponseWriter, r *http.Request) error {
+	user, err := s.currentUser(r)
+	if err != nil {
+		return err
+	}
+	id, err := pathInt(r, "listing_id")
+	if err != nil {
+		return err
+	}
+	ctx, ex := r.Context(), s.DB.Executor
+	listing, err := store.ListingByID(ctx, ex, id)
+	if err != nil {
+		return err
+	}
+	if listing == nil {
+		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	if err := ownsListing(user, listing); err != nil {
+		return err
+	}
+	if !s.photos.Configured() {
+		return httpErr(http.StatusServiceUnavailable, "Photo storage is not configured on this environment")
+	}
+	up, err := parseUploadLimit(w, r, maxVideoRequest, "Video must be under 50MB")
+	if err != nil {
+		return err
+	}
+	defer up.close()
+	data, err := up.readVideo()
+	if err != nil {
+		return err
+	}
+	uploaded, err := s.photos.UploadVideo(ctx, data, "cribby/listings/"+itoa(id)+"/video")
+	if err != nil {
+		s.log.Error("video upload failed", "err", err)
+		return httpErr(http.StatusBadGateway, "Couldn't upload the video — try again")
+	}
+	if err := store.SetListingVideo(ctx, ex, id, &uploaded.URL, &uploaded.PublicID); err != nil {
+		return err
+	}
+	// The previous video is now orphaned; failing to delete it must not fail the request.
+	if listing.VideoPublicID != nil {
+		if err := s.photos.DestroyVideo(ctx, *listing.VideoPublicID); err != nil {
+			s.log.Warn("deleting replaced listing video", "err", err)
+		}
+	}
+	if err := s.repend(ctx, user, listing); err != nil {
+		return err
+	}
+	return s.respondListing(w, r, id)
+}
+
+func (s *Server) deleteListingVideo(w http.ResponseWriter, r *http.Request) error {
+	user, err := s.currentUser(r)
+	if err != nil {
+		return err
+	}
+	id, err := pathInt(r, "listing_id")
+	if err != nil {
+		return err
+	}
+	ctx, ex := r.Context(), s.DB.Executor
+	listing, err := store.ListingByID(ctx, ex, id)
+	if err != nil {
+		return err
+	}
+	if listing == nil {
+		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	if err := ownsListing(user, listing); err != nil {
+		return err
+	}
+	if listing.VideoURL == nil {
+		return httpErr(http.StatusNotFound, "This listing has no video")
+	}
+	if listing.VideoPublicID != nil && s.photos.Configured() {
+		if err := s.photos.DestroyVideo(ctx, *listing.VideoPublicID); err != nil {
+			s.log.Error("deleting listing video", "err", err)
+			return httpErr(http.StatusBadGateway, "Couldn't delete the video from storage — try again")
+		}
+	}
+	if err := store.SetListingVideo(ctx, ex, id, nil, nil); err != nil {
+		return err
+	}
+	return s.respondListing(w, r, id)
+}

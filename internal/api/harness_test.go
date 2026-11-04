@@ -79,6 +79,8 @@ type fakeStorage struct {
 	urlFmt, idFmt string // each take the upload counter
 	uploads       int
 	destroyed     []string
+	videos        int
+	videosGone    []string
 }
 
 func (f *fakeStorage) Configured() bool { return f.configured }
@@ -90,6 +92,16 @@ func (f *fakeStorage) Upload(_ context.Context, _ []byte, _, _, _ string) (stora
 
 func (f *fakeStorage) Destroy(_ context.Context, id string) error {
 	f.destroyed = append(f.destroyed, id)
+	return nil
+}
+
+func (f *fakeStorage) UploadVideo(_ context.Context, _ []byte, _ string) (storage.Uploaded, error) {
+	f.videos++
+	return storage.Uploaded{URL: fmt.Sprintf("https://cdn.test/video/upload/v%d/clip.mp4", f.videos), PublicID: fmt.Sprintf("cribby/vid%d", f.videos)}, nil
+}
+
+func (f *fakeStorage) DestroyVideo(_ context.Context, id string) error {
+	f.videosGone = append(f.videosGone, id)
 	return nil
 }
 

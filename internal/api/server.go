@@ -85,6 +85,8 @@ func (s *Server) routes() {
 	m.Handle("PATCH "+p+"/admin/listings/{listing_id}/review", s.h(s.adminReviewListing))
 	m.Handle("POST "+p+"/listings/{listing_id}/photos", s.h(s.uploadListingPhoto))
 	m.Handle("DELETE "+p+"/listings/{listing_id}/photos/{photo_id}", s.h(s.deleteListingPhoto))
+	m.Handle("POST "+p+"/listings/{listing_id}/video", s.h(s.uploadListingVideo))
+	m.Handle("DELETE "+p+"/listings/{listing_id}/video", s.h(s.deleteListingVideo))
 
 	// AI concierge (OpenRouter)
 	m.Handle("POST "+p+"/concierge/chat", s.h(s.conciergeChat))

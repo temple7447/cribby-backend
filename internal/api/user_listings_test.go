@@ -122,3 +122,79 @@ func TestWalkIsEstimatedFromPostersSchool(t *testing.T) {
 		t.Fatalf("walk=%v, want ~17 min for ~1.1 km", w)
 	}
 }
+
+// ---- walkthrough video ----
+
+// mp4 is the smallest thing that passes the "ftyp" signature check.
+var mp4 = append([]byte{0, 0, 0, 0x18}, []byte("ftypmp42\x00\x00\x00\x00mp42isom")...)
+
+func TestOwnerUploadsReplacesAndRemovesVideo(t *testing.T) {
+	e := newEnv(t)
+	token, _ := e.signup("filmer@gmail.com")
+	lid := id(e.expect(201, "POST", "/listings", token, apartment("Video flat")).(obj))
+	adminTok, admin := e.signup("vidboss@gmail.com")
+	e.makeAdmin(id(admin))
+	e.expect(200, "PATCH", path("/admin/listings/%d/review", lid), adminTok, obj{"decision": "approve"})
+
+	code, out := e.upload(path("/listings/%d/video", lid), token, "tour.mp4", "video/mp4", mp4, nil)
+	if code != 200 {
+		t.Fatalf("upload: %d %v", code, out)
+	}
+	l := out.(obj)
+	if l["video_url"] != "https://cdn.test/video/upload/v1/clip.mp4" || l["video"] != true {
+		t.Fatalf("got video_url=%v video=%v", l["video_url"], l["video"])
+	}
+	if l["status"] != "pending" { // a change to an approved listing goes back for review
+		t.Fatalf("status = %v", l["status"])
+	}
+
+	// replacing it deletes the old file from storage
+	_, out = e.upload(path("/listings/%d/video", lid), token, "again.mov", "video/quicktime", mp4, nil)
+	if out.(obj)["video_url"] != "https://cdn.test/video/upload/v2/clip.mp4" {
+		t.Fatalf("got %v", out.(obj)["video_url"])
+	}
+	if len(e.photos.videosGone) != 1 || e.photos.videosGone[0] != "cribby/vid1" {
+		t.Fatalf("old video not destroyed: %v", e.photos.videosGone)
+	}
+
+	// someone else can neither add nor remove it
+	other, _ := e.signup("vid-thief@gmail.com")
+	if code, _ := e.upload(path("/listings/%d/video", lid), other, "x.mp4", "video/mp4", mp4, nil); code != 403 {
+		t.Fatalf("other upload: %d", code)
+	}
+	e.expect(403, "DELETE", path("/listings/%d/video", lid), other, nil)
+
+	// the owner removes it
+	l = e.expect(200, "DELETE", path("/listings/%d/video", lid), token, nil).(obj)
+	if l["video_url"] != nil || l["video"] != false {
+		t.Fatalf("got video_url=%v video=%v", l["video_url"], l["video"])
+	}
+	if len(e.photos.videosGone) != 2 || e.photos.videosGone[1] != "cribby/vid2" {
+		t.Fatalf("destroyed: %v", e.photos.videosGone)
+	}
+	e.expect(404, "DELETE", path("/listings/%d/video", lid), token, nil) // nothing left to remove
+}
+
+func TestVideoValidation(t *testing.T) {
+	e := newEnv(t)
+	token, _ := e.signup("badvid@gmail.com")
+	lid := id(e.expect(201, "POST", "/listings", token, apartment("Bad video")).(obj))
+	up := func(name, ctype string, data []byte) int {
+		code, _ := e.upload(path("/listings/%d/video", lid), token, name, ctype, data, nil)
+		return code
+	}
+	if c := up("pic.jpg", "image/jpeg", jpeg); c != 400 { // an image is not a video
+		t.Fatalf("image as video: %d", c)
+	}
+	if c := up("fake.mp4", "video/mp4", []byte("this is just text, not a video at all")); c != 400 { // header lies
+		t.Fatalf("fake mp4: %d", c)
+	}
+	big := make([]byte, 50*1024*1024+1)
+	copy(big, mp4)
+	if c := up("huge.mp4", "video/mp4", big); c != 400 {
+		t.Fatalf("oversize video: %d", c)
+	}
+	if c := up("ok.mp4", "video/mp4", mp4); c != 200 {
+		t.Fatalf("valid video: %d", c)
+	}
+}

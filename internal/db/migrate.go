@@ -234,6 +234,12 @@ var goMigrations = []struct {
 		`ALTER TABLE users ADD COLUMN display_name VARCHAR(40) NOT NULL DEFAULT ''`,
 		`CREATE UNIQUE INDEX uq_users_display_name ON users (LOWER(display_name)) WHERE display_name <> ''`,
 	}},
+	// One walkthrough video per listing, hosted on Cloudinary. The older boolean `video` column
+	// ("has a video tour") is kept in step with it.
+	{"006_listing_video", []string{
+		`ALTER TABLE listings ADD COLUMN video_url VARCHAR(600)`,
+		`ALTER TABLE listings ADD COLUMN video_public_id VARCHAR(255)`,
+	}},
 }
 
 // MigrateGo applies pending Go-only migrations; call it after Migrate.

@@ -43,6 +43,9 @@ type Storage interface {
 	// that Cloudinary fetches itself.
 	Upload(ctx context.Context, file []byte, remoteURL, folder, transformation string) (Uploaded, error)
 	Destroy(ctx context.Context, publicID string) error
+	// UploadVideo stores a video and returns a URL that plays in any browser (MP4/H.264).
+	UploadVideo(ctx context.Context, file []byte, folder string) (Uploaded, error)
+	DestroyVideo(ctx context.Context, publicID string) error
 }
 
 type Cloudinary struct {
@@ -80,7 +83,7 @@ func (c *Cloudinary) sign(params map[string]string) string {
 // call performs one signed Cloudinary API request. `params` are the signed
 // fields; `file` (bytes) or `fileURL` (a remote URL Cloudinary fetches itself)
 // is attached unsigned, as Cloudinary requires.
-func (c *Cloudinary) call(ctx context.Context, action string, params map[string]string, file []byte, fileURL string) (map[string]any, error) {
+func (c *Cloudinary) call(ctx context.Context, resource, action string, params map[string]string, file []byte, fileURL string) (map[string]any, error) {
 	if !c.Configured() {
 		return nil, ErrNotConfigured
 	}
@@ -102,13 +105,19 @@ func (c *Cloudinary) call(ctx context.Context, action string, params map[string]
 	}
 	_ = mw.Close()
 
-	url := fmt.Sprintf("%s/v1_1/%s/image/%s", c.BaseURL, c.CloudName, action)
+	url := fmt.Sprintf("%s/v1_1/%s/%s/%s", c.BaseURL, c.CloudName, resource, action)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
-	resp, err := c.Client.Do(req)
+	client := c.Client
+	if resource == "video" { // a phone video takes much longer to send than a photo
+		vc := *c.Client
+		vc.Timeout = 5 * time.Minute
+		client = &vc
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +138,7 @@ func (c *Cloudinary) call(ctx context.Context, action string, params map[string]
 }
 
 func (c *Cloudinary) Upload(ctx context.Context, file []byte, remoteURL, folder, transformation string) (Uploaded, error) {
-	out, err := c.call(ctx, "upload", map[string]string{"folder": folder, "transformation": transformation}, file, remoteURL)
+	out, err := c.call(ctx, "image", "upload", map[string]string{"folder": folder, "transformation": transformation}, file, remoteURL)
 	if err != nil {
 		return Uploaded{}, err
 	}
@@ -142,6 +151,40 @@ func (c *Cloudinary) Upload(ctx context.Context, file []byte, remoteURL, folder,
 }
 
 func (c *Cloudinary) Destroy(ctx context.Context, publicID string) error {
-	_, err := c.call(ctx, "destroy", map[string]string{"public_id": publicID}, nil, "")
+	_, err := c.call(ctx, "image", "destroy", map[string]string{"public_id": publicID}, nil, "")
+	return err
+}
+
+// playableVideoURL rewrites a Cloudinary video URL so it's delivered as H.264 MP4 whatever was
+// uploaded (iPhones record HEVC .mov, which Chrome and Android browsers can't play). Cloudinary
+// transcodes lazily on first view, so the upload itself stays fast.
+func playableVideoURL(u string) string {
+	const marker = "/video/upload/"
+	i := strings.Index(u, marker)
+	if i < 0 {
+		return u
+	}
+	rest := u[i+len(marker):]
+	if j := strings.LastIndex(rest, "."); j > strings.LastIndex(rest, "/") {
+		rest = rest[:j]
+	}
+	return u[:i+len(marker)] + "f_mp4,vc_h264,q_auto/" + rest + ".mp4"
+}
+
+func (c *Cloudinary) UploadVideo(ctx context.Context, file []byte, folder string) (Uploaded, error) {
+	out, err := c.call(ctx, "video", "upload", map[string]string{"folder": folder}, file, "")
+	if err != nil {
+		return Uploaded{}, err
+	}
+	url, _ := out["secure_url"].(string)
+	publicID, _ := out["public_id"].(string)
+	if url == "" || publicID == "" {
+		return Uploaded{}, errors.New("cloudinary video upload: response missing secure_url/public_id")
+	}
+	return Uploaded{URL: playableVideoURL(url), PublicID: publicID}, nil
+}
+
+func (c *Cloudinary) DestroyVideo(ctx context.Context, publicID string) error {
+	_, err := c.call(ctx, "video", "destroy", map[string]string{"public_id": publicID}, nil, "")
 	return err
 }

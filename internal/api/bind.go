@@ -261,6 +261,11 @@ const (
 	maxUploadBytes = 8 * 1024 * 1024 // 8MB
 	// Allow a little headroom for multipart framing; real size is checked after.
 	maxRequestBytes = maxUploadBytes + 1<<20
+
+	// Listing walkthrough videos. Kept modest because the bytes pass through this server (and
+	// Render's free tier has little memory) on their way to Cloudinary.
+	maxVideoBytes   = 50 * 1024 * 1024
+	maxVideoRequest = maxVideoBytes + 1<<20
 )
 
 var allowedImageTypes = map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true, "image/heic": true}
@@ -280,11 +285,17 @@ func (u *upload) close() {
 // parseUpload reads the multipart body and requires a "file" part. A missing
 // part is a 422, like FastAPI's File(...).
 func parseUpload(w http.ResponseWriter, r *http.Request) (*upload, error) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
-	if err := r.ParseMultipartForm(maxRequestBytes); err != nil {
+	return parseUploadLimit(w, r, maxRequestBytes, "Image must be under 8MB")
+}
+
+// parseUploadLimit is parseUpload with its own size cap. Only 8MB of the body is held in memory;
+// the rest of a large upload spills to a temp file.
+func parseUploadLimit(w http.ResponseWriter, r *http.Request, limit int64, tooBig string) (*upload, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
 		var mbe *http.MaxBytesError
 		if errors.As(err, &mbe) {
-			return nil, httpErr(http.StatusBadRequest, "Image must be under 8MB")
+			return nil, httpErr(http.StatusBadRequest, tooBig)
 		}
 		return nil, validationFailed(fieldError{"missing", []any{"body", "file"}, "Field required"})
 	}
@@ -310,6 +321,29 @@ func (u *upload) readImage() ([]byte, error) {
 	}
 	if len(data) > maxUploadBytes {
 		return nil, httpErr(http.StatusBadRequest, "Image must be under 8MB")
+	}
+	return data, nil
+}
+
+var allowedVideoTypes = map[string]bool{"video/mp4": true, "video/quicktime": true, "video/webm": true}
+
+// readVideo validates the declared type, size and file signature, and returns the bytes.
+func (u *upload) readVideo() ([]byte, error) {
+	if !allowedVideoTypes[u.contentType] {
+		return nil, httpErr(http.StatusBadRequest, "Unsupported video type: "+u.contentType+" (use MP4, MOV or WebM)")
+	}
+	data, err := io.ReadAll(io.LimitReader(u.file, maxVideoBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxVideoBytes {
+		return nil, httpErr(http.StatusBadRequest, "Video must be under 50MB")
+	}
+	// MP4/MOV carry "ftyp" at byte 4; WebM starts with the EBML magic. Don't trust the header alone.
+	isISO := len(data) > 12 && string(data[4:8]) == "ftyp"
+	isWebM := len(data) > 4 && data[0] == 0x1A && data[1] == 0x45 && data[2] == 0xDF && data[3] == 0xA3
+	if !isISO && !isWebM {
+		return nil, httpErr(http.StatusBadRequest, "That file doesn't look like a video")
 	}
 	return data, nil
 }

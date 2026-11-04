@@ -73,6 +73,8 @@ type Listing struct {
 	Description          string              `json:"description"` // free text from the poster
 	Address              string              `json:"address"`
 	ReviewNote           *string             `json:"review_note"` // why an admin rejected it, shown to the owner
+	VideoURL             *string             `json:"video_url"`   // a playable (MP4) walkthrough the poster uploaded, if any
+	VideoPublicID        *string             `json:"-"`
 }
 
 // Listing statuses. Only approved listings are public.
