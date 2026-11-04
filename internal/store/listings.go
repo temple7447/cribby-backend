@@ -59,9 +59,19 @@ func SearchListings(ctx context.Context, ex db.Executor, f ListingSearch) ([]*mo
 	if f.NearLat == nil || f.NearLng == nil {
 		return listings, nil
 	}
-	// Proximity mode: nearest-first, distance_km stamped, coordinate-less
-	// listings dropped, and anything past radius_km if given.
-	return geo.RankByDistance(listings, *f.NearLat, *f.NearLng, f.RadiusKM), nil
+	// Proximity mode: nearest-first with distance_km stamped, and anything past radius_km dropped
+	// if one is given. Listings that have no pin can't be ranked, but they're still homes a
+	// student may want — so unless a radius says "only within X km", they follow the nearby
+	// ones instead of vanishing.
+	ranked := geo.RankByDistance(listings, *f.NearLat, *f.NearLng, f.RadiusKM)
+	if f.RadiusKM == nil {
+		for _, l := range listings {
+			if lat, lng := l.Coords(); lat == nil || lng == nil {
+				ranked = append(ranked, l)
+			}
+		}
+	}
+	return ranked, nil
 }
 
 // ListingsByOwner returns everything a user has posted, newest first, whatever its status.

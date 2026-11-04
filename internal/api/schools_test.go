@@ -115,7 +115,8 @@ func TestListingsMeasuredFromChosenSchool(t *testing.T) {
 	e.createListingAt("No coords", nil, nil)
 
 	out := e.expect(200, "GET", path("/listings?school_id=%d", id(unilag)), "", nil)
-	if got := titlesOf(out); !equal(got, []string{"Near", "Far"}) {
+	// nearest-first; the listing with no pin follows the located ones rather than disappearing
+	if got := titlesOf(out); !equal(got, []string{"Near", "Far", "No coords"}) {
 		t.Fatalf("got %v", got)
 	}
 	near := list(out)[0].(obj)

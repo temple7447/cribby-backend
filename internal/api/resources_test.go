@@ -448,17 +448,27 @@ func TestRadiusFiltersOutDistantListings(t *testing.T) {
 	}
 }
 
-func TestListingsWithoutCoordinatesExcludedFromProximitySearch(t *testing.T) {
+func TestListingsWithoutCoordinatesComeAfterTheNearbyOnes(t *testing.T) {
 	e := newEnv(t)
-	e.createListingAt("Has coords", f(6.5170), f(3.3910))
 	e.createListingAt("No coords", nil, nil)
+	e.createListingAt("Far", f(6.5400), f(3.4100))
+	e.createListingAt("Near", f(6.5170), f(3.3910))
 
+	// ranked nearest-first, and the unlocated listing follows instead of disappearing
 	prox := e.expect(200, "GET", path("/listings?near_lat=%v&near_lng=%v", campus[0], campus[1]), "", nil)
-	if got := titlesOf(prox); !equal(got, []string{"Has coords"}) {
+	if got := titlesOf(prox); !equal(got, []string{"Near", "Far", "No coords"}) {
 		t.Fatalf("proximity: %v", got)
 	}
+	if last := list(prox)[2].(obj); last["distance_km"] != nil {
+		t.Fatalf("an unlocated listing has no distance: %v", last)
+	}
+	// a radius means "only within X km": unlocated listings can't be inside it
+	inside := e.expect(200, "GET", path("/listings?near_lat=%v&near_lng=%v&radius_km=50", campus[0], campus[1]), "", nil)
+	if got := titlesOf(inside); !equal(got, []string{"Near", "Far"}) {
+		t.Fatalf("radius: %v", got)
+	}
 	plain := e.expect(200, "GET", "/listings", "", nil)
-	if len(list(plain)) != 2 {
+	if len(list(plain)) != 3 {
 		t.Fatalf("plain: %v", plain)
 	}
 	for _, l := range list(plain) {
