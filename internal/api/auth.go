@@ -109,18 +109,29 @@ func (s *Server) recordLogin(ctx context.Context, user *model.User) {
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	var p struct {
-		Email    string `json:"email" validate:"required,email"`
+		// Email holds an email address OR a display name (the key stays "email" so the mobile
+		// app keeps working). Display names can't contain "@", so the two never collide.
+		Email    string `json:"email" validate:"required"`
 		Password string `json:"password" validate:"required"`
 	}
 	if err := bindJSON(r, &p); err != nil {
 		return err
 	}
-	user, err := store.UserByEmail(r.Context(), s.DB.Executor, p.Email)
+	ident := strings.TrimSpace(p.Email)
+	var user *model.User
+	var err error
+	if strings.Contains(ident, "@") {
+		if normalized, ok := normalizeEmail(ident); ok {
+			user, err = store.UserByEmail(r.Context(), s.DB.Executor, normalized)
+		}
+	} else if ident != "" {
+		user, err = store.UserByDisplayName(r.Context(), s.DB.Executor, ident)
+	}
 	if err != nil {
 		return err
 	}
 	if user == nil || !security.VerifyPassword(p.Password, user.HashedPassword) {
-		return httpErr(http.StatusUnauthorized, "Incorrect email or password")
+		return httpErr(http.StatusUnauthorized, "Incorrect email, username or password")
 	}
 	if user.IsSuspended {
 		// 403, not 401 — the credentials were correct, access is what's denied.

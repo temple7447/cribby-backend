@@ -434,3 +434,39 @@ func TestDisplayNameFormatIsValidated(t *testing.T) {
 		e.expect(422, "POST", "/auth/signup", "", obj{"email": "x@gmail.com", "password": "pw123456", "name": "X", "display_name": bad})
 	}
 }
+
+func TestLoginWithDisplayNameOrEmail(t *testing.T) {
+	e := newEnv(t)
+	e.expect(200, "POST", "/auth/signup", "", obj{"email": "Ada@Gmail.com", "password": "pw123456", "name": "Ada", "display_name": "Okafor.Homes"})
+	// email (domain casing is normalised), username, and username in a different case all work
+	for _, ident := range []string{"Ada@gmail.com", "Ada@GMAIL.com", "Okafor.Homes", "okafor.homes", "  okafor.homes "} {
+		out := e.expect(200, "POST", "/auth/login", "", obj{"email": ident, "password": "pw123456"}).(obj)
+		if out["user"].(obj)["email"] != "Ada@gmail.com" {
+			t.Fatalf("%q logged in as %v", ident, out["user"])
+		}
+	}
+	e.expect(401, "POST", "/auth/login", "", obj{"email": "okafor.homes", "password": "wrong"})
+	e.expect(401, "POST", "/auth/login", "", obj{"email": "nobody", "password": "pw123456"})
+	e.expect(401, "POST", "/auth/login", "", obj{"email": "not-an-email@", "password": "pw123456"})
+	// a username never matches someone who has none
+	e.signup("plain@gmail.com")
+	e.expect(401, "POST", "/auth/login", "", obj{"email": "", "password": "pw123456"})
+}
+
+func TestEmailLookupIgnoresCaseButExactMatchWins(t *testing.T) {
+	e := newEnv(t)
+	// an old account stored with capitals still signs in when the client sends the lowercased address
+	e.expect(200, "POST", "/auth/signup", "", obj{"email": "Ada@Gmail.com", "password": "pw123456", "name": "Ada"})
+	e.expect(200, "POST", "/auth/login", "", obj{"email": "ada@gmail.com", "password": "pw123456"})
+	// ...and the same address in another case can't be registered twice
+	e.expect(400, "POST", "/auth/signup", "", obj{"email": "ada@gmail.com", "password": "pw123456", "name": "Ada 2"})
+
+	// legacy data: two accounts differing only by case. Each token must still resolve to its own owner.
+	e.exec(`INSERT INTO users (email, hashed_password, name, school, avatar_emoji, verification_status, is_admin, is_suspended)
+		SELECT 'ADA@gmail.com', hashed_password, 'Other Ada', school, avatar_emoji, verification_status, is_admin, is_suspended FROM users WHERE name = 'Ada'`)
+	tokA := e.expect(200, "POST", "/auth/login", "", obj{"email": "Ada@Gmail.com", "password": "pw123456"}).(obj)["access_token"].(string)
+	me := e.expect(200, "GET", "/users/me", tokA, nil).(obj)
+	if me["name"] != "Ada" {
+		t.Fatalf("token resolved to the wrong account: %v", me["name"])
+	}
+}

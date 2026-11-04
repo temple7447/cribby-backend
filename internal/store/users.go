@@ -24,8 +24,12 @@ func UserByID(ctx context.Context, ex db.Executor, id int) (*model.User, error) 
 	return queryOne(ctx, ex, scanUser, `SELECT `+userCols+` FROM users WHERE id = ?`, id)
 }
 
+// UserByEmail matches ignoring case, so accounts stored as "Ada@gmail.com" still work when a client
+// sends the lowercased address. An exact match always wins, so two addresses that differ only by
+// case (possible in old data) can never be confused with each other.
 func UserByEmail(ctx context.Context, ex db.Executor, email string) (*model.User, error) {
-	return queryOne(ctx, ex, scanUser, `SELECT `+userCols+` FROM users WHERE email = ?`, email)
+	return queryOne(ctx, ex, scanUser, `SELECT `+userCols+` FROM users WHERE LOWER(email) = LOWER(?)
+		ORDER BY CASE WHEN email = ? THEN 0 ELSE 1 END, id LIMIT 1`, email, email)
 }
 
 // UserByDisplayName finds who holds a display name (case-insensitive), or nil.
