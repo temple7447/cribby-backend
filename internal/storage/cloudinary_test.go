@@ -121,7 +121,7 @@ func TestUploadVideoUsesVideoEndpointAndDestroyToo(t *testing.T) {
 	var paths []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, r.URL.Path)
-		_, _ = w.Write([]byte(`{"secure_url":"https://res.cloudinary.com/mycloud/video/upload/v9/cribby/v.mov","public_id":"cribby/v"}`))
+		_, _ = w.Write([]byte(`{"secure_url":"https://res.cloudinary.com/mycloud/video/upload/v9/cribby/v.mov","public_id":"cribby/v","duration":42.5}`))
 	}))
 	defer srv.Close()
 	c := NewCloudinary("mycloud", "key", "secret")
@@ -130,7 +130,7 @@ func TestUploadVideoUsesVideoEndpointAndDestroyToo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if up.PublicID != "cribby/v" || !strings.HasSuffix(up.URL, "/f_mp4,vc_h264,q_auto/v9/cribby/v.mp4") {
+	if up.PublicID != "cribby/v" || up.DurationSec != 42.5 || !strings.HasSuffix(up.URL, "/f_mp4,vc_h264,q_auto/v9/cribby/v.mp4") {
 		t.Fatalf("got %+v", up)
 	}
 	if err := c.DestroyVideo(context.Background(), "cribby/v"); err != nil {

@@ -271,6 +271,14 @@ func (s *Server) uploadListingVideo(w http.ResponseWriter, r *http.Request) erro
 		s.log.Error("video upload failed", "err", err)
 		return httpErr(http.StatusBadGateway, "Couldn't upload the video — try again")
 	}
+	// Length is only known once Cloudinary has read the file, so a too-long video is uploaded and
+	// then immediately deleted. The half-second of slack covers rounding (a "1:00" clip is 60.0x s).
+	if uploaded.DurationSec > maxVideoSeconds+0.5 {
+		if err := s.photos.DestroyVideo(ctx, uploaded.PublicID); err != nil {
+			s.log.Warn("deleting over-length listing video", "err", err)
+		}
+		return httpErr(http.StatusBadRequest, "Video must be 1 minute or shorter")
+	}
 	if err := store.SetListingVideo(ctx, ex, id, &uploaded.URL, &uploaded.PublicID); err != nil {
 		return err
 	}

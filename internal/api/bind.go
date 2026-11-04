@@ -265,6 +265,7 @@ const (
 	// Listing walkthrough videos. Kept modest because the bytes pass through this server (and
 	// Render's free tier has little memory) on their way to Cloudinary.
 	maxVideoBytes   = 50 * 1024 * 1024
+	maxVideoSeconds = 60.0 // walkthroughs are one minute at most
 	maxVideoRequest = maxVideoBytes + 1<<20
 )
 

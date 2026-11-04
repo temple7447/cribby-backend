@@ -175,6 +175,33 @@ func TestOwnerUploadsReplacesAndRemovesVideo(t *testing.T) {
 	e.expect(404, "DELETE", path("/listings/%d/video", lid), token, nil) // nothing left to remove
 }
 
+func TestVideoLongerThanOneMinuteIsRejectedAndDeleted(t *testing.T) {
+	e := newEnv(t)
+	token, _ := e.signup("longfilm@gmail.com")
+	lid := id(e.expect(201, "POST", "/listings", token, apartment("Long video")).(obj))
+	up := func() (int, any) {
+		return e.upload(path("/listings/%d/video", lid), token, "tour.mp4", "video/mp4", mp4, nil)
+	}
+	e.photos.videoSeconds = 75
+	if code, _ := up(); code != 400 {
+		t.Fatalf("75s video: %d, want 400", code)
+	}
+	if len(e.photos.videosGone) != 1 { // not left behind in storage
+		t.Fatalf("over-length video not deleted: %v", e.photos.videosGone)
+	}
+	if l := e.expect(200, "GET", path("/listings/%d", lid), token, nil).(obj); l["video_url"] != nil {
+		t.Fatalf("over-length video was attached: %v", l["video_url"])
+	}
+	e.photos.videoSeconds = 60.04 // "1:00" with rounding noise is fine
+	if code, _ := up(); code != 200 {
+		t.Fatalf("60s video: %d, want 200", code)
+	}
+	e.photos.videoSeconds = 0 // unknown length is allowed (the size cap still applies)
+	if code, _ := up(); code != 200 {
+		t.Fatalf("unknown-length video: %d, want 200", code)
+	}
+}
+
 func TestVideoValidation(t *testing.T) {
 	e := newEnv(t)
 	token, _ := e.signup("badvid@gmail.com")

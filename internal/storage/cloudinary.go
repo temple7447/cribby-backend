@@ -34,7 +34,11 @@ const (
 	TransformBanner = "c_fill,g_auto,h_400,w_1200/f_auto,q_auto"
 )
 
-type Uploaded struct{ URL, PublicID string }
+type Uploaded struct {
+	URL, PublicID string
+	// DurationSec is the length of an uploaded video as reported by Cloudinary (0 if unknown).
+	DurationSec float64
+}
 
 // Storage is the photo store; tests substitute a fake.
 type Storage interface {
@@ -181,7 +185,8 @@ func (c *Cloudinary) UploadVideo(ctx context.Context, file []byte, folder string
 	if url == "" || publicID == "" {
 		return Uploaded{}, errors.New("cloudinary video upload: response missing secure_url/public_id")
 	}
-	return Uploaded{URL: playableVideoURL(url), PublicID: publicID}, nil
+	duration, _ := out["duration"].(float64)
+	return Uploaded{URL: playableVideoURL(url), PublicID: publicID, DurationSec: duration}, nil
 }
 
 func (c *Cloudinary) DestroyVideo(ctx context.Context, publicID string) error {
