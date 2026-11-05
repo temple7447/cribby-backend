@@ -121,6 +121,13 @@ func (s *Server) startConversation(w http.ResponseWriter, r *http.Request) error
 			}
 		}
 	}
+	if p.Kind == "landlord" && p.ListingID != nil {
+		if l, err := store.ListingByID(ctx, ex, *p.ListingID); err != nil {
+			return err
+		} else if l != nil && l.OwnerID != nil && *l.OwnerID == user.ID {
+			return httpErr(http.StatusBadRequest, "That's your own listing")
+		}
+	}
 	convo, err := store.FindOrCreateConversation(ctx, ex, user.ID, p.Kind, p.ListingID, p.RoommateProfileID)
 	if err != nil {
 		return err
@@ -193,9 +200,37 @@ func (s *Server) sendMessage(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
-	msg, err := store.AddMessage(ctx, ex, convo.ID, "me", p.Text)
+	// A message to a landlord who has an account goes to their inbox; for listings the Cribby team
+	// added there is no landlord account, so it is simply stored.
+	var owner *model.User
+	if convo.Kind == "landlord" && convo.ListingID != nil {
+		l, err := store.ListingByID(ctx, ex, *convo.ListingID)
+		if err != nil {
+			return err
+		}
+		if l != nil && l.OwnerID != nil {
+			if owner, err = store.UserByID(ctx, ex, *l.OwnerID); err != nil {
+				return err
+			}
+		}
+	}
+	if owner != nil {
+		if err := s.rejectIfBlocked(ctx, user.ID, owner.ID); err != nil {
+			return err
+		}
+	}
+	prev, err := store.LastMessage(ctx, ex, convo.ID)
 	if err != nil {
 		return err
+	}
+	msg, err := store.AddMessageRead(ctx, ex, convo.ID, "me", p.Text, owner == nil)
+	if err != nil {
+		return err
+	}
+	if owner != nil && shouldNotify(prev, "me", time.Now()) {
+		if err := s.mail.SendNewMessage(ctx, owner.Email, user.Name, convo.Subtitle, p.Text, true); err != nil {
+			s.log.Warn("new-message email failed", "to", owner.Email, "err", err)
+		}
 	}
 	writeJSON(w, http.StatusCreated, msg)
 	return nil

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"campus-backend/internal/db"
+	"campus-backend/internal/model"
 	"campus-backend/internal/store"
 )
 
@@ -47,8 +48,12 @@ func (s *Server) createBooking(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if listing == nil {
+	// Only listings students can actually see can be booked.
+	if listing == nil || listing.Status != model.ListingApproved {
 		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	if listing.OwnerID != nil && *listing.OwnerID == user.ID {
+		return httpErr(http.StatusBadRequest, "You can't book your own listing")
 	}
 	booking, err := store.CreateBooking(ctx, ex, store.NewBooking{
 		UserID: user.ID, ListingID: p.ListingID, LeaseMonths: p.LeaseMonths, MoveInDate: p.MoveInDate,
@@ -58,10 +63,16 @@ func (s *Server) createBooking(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// Best-effort notification — a landlord (in practice: admin, since there's no
-	// real landlord-account model yet) should hear about new requests, but a
-	// flaky email send must never fail the booking itself.
-	if admins, err := store.ListAdminEmails(ctx, ex); err == nil {
+	// Best-effort notification — the landlord who posted the listing hears about it; listings the
+	// Cribby team added themselves have no owner, so admins are told instead. A flaky email send
+	// must never fail the booking itself.
+	if listing.OwnerID != nil {
+		if owner, err := store.UserByID(ctx, ex, *listing.OwnerID); err == nil && owner != nil {
+			if err := s.mail.SendOwnerBookingRequest(ctx, owner.Email, user.Name, listing.Title, p.MoveInDate.String()); err != nil {
+				s.log.Warn("booking request email failed", "to", owner.Email, "err", err)
+			}
+		}
+	} else if admins, err := store.ListAdminEmails(ctx, ex); err == nil {
 		for _, to := range admins {
 			if err := s.mail.SendBookingRequest(ctx, to, user.Name, listing.Title, p.MoveInDate.String()); err != nil {
 				s.log.Warn("booking request email failed", "to", to, "err", err)
@@ -105,7 +116,8 @@ func (s *Server) getBooking(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) decideBooking(w http.ResponseWriter, r *http.Request) error {
-	if _, err := s.currentAdmin(r); err != nil {
+	user, err := s.currentUser(r)
+	if err != nil {
 		return err
 	}
 	id, err := pathInt(r, "booking_id")
@@ -125,6 +137,10 @@ func (s *Server) decideBooking(w http.ResponseWriter, r *http.Request) error {
 	}
 	if booking == nil {
 		return httpErr(http.StatusNotFound, "Booking not found")
+	}
+	// Admins decide on anything; a landlord decides on requests for their own listings.
+	if !user.IsAdmin && (booking.Listing.OwnerID == nil || *booking.Listing.OwnerID != user.ID) {
+		return httpErr(http.StatusForbidden, "Admin access required")
 	}
 	if booking.Status != "pending" {
 		return httpErr(http.StatusBadRequest, fmt.Sprintf("Booking is already %s, not pending", booking.Status))

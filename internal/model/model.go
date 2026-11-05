@@ -242,3 +242,39 @@ type School struct {
 	// GooglePlaceID links the school to its Google Business listing (see /maps/places/{id}).
 	GooglePlaceID *string `json:"google_place_id"`
 }
+
+// StudentSummary is what a landlord sees of someone who contacted them: enough to judge the
+// request, never contact details. Email appears only once a booking is approved.
+type StudentSummary struct {
+	Name     string  `json:"name"`
+	School   string  `json:"school"`
+	Verified bool    `json:"verified"`
+	Email    *string `json:"email,omitempty"`
+}
+
+// OwnerConversation is a student's chat about one of the landlord's listings.
+type OwnerConversation struct {
+	ID           int            `json:"id"`
+	ListingID    int            `json:"listing_id"`
+	ListingTitle string         `json:"listing_title"`
+	Student      StudentSummary `json:"student"`
+	StudentID    int            `json:"-"`
+	Unread       int            `json:"unread"` // the student's messages the landlord hasn't opened yet
+	CreatedAt    db.Time        `json:"created_at"`
+	LastMessage  *Message       `json:"last_message"`
+	Messages     []Message      `json:"messages,omitempty"` // only on the single-conversation view
+}
+
+// OwnerBooking is a booking request on one of the landlord's listings.
+type OwnerBooking struct {
+	ID                int            `json:"id"`
+	ListingID         int            `json:"listing_id"`
+	ListingTitle      string         `json:"listing_title"`
+	MoveInDate        db.Date        `json:"move_in_date"`
+	LeaseMonths       int            `json:"lease_months"`
+	Status            string         `json:"status"`
+	MessageToLandlord *string        `json:"message_to_landlord"`
+	GuarantorName     *string        `json:"guarantor_name"`
+	CreatedAt         db.Time        `json:"created_at"`
+	Student           StudentSummary `json:"student"`
+}

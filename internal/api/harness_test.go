@@ -39,6 +39,8 @@ type fakeMail struct {
 	resets           []sentCode
 	bookingRequests  []string    // admin emails
 	decisions        [][2]string // {student email, status}
+	ownerRequests    []string    // landlord emails told about a booking request
+	messages         []sentMessage
 	failVerification bool
 }
 
@@ -63,6 +65,26 @@ func (f *fakeMail) SendBookingRequest(_ context.Context, admin, _, _, _ string) 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.bookingRequests = append(f.bookingRequests, admin)
+	return nil
+}
+
+// sentMessage is one "you have a new message" email.
+type sentMessage struct {
+	To, From, Listing, Preview string
+	ToLandlord                 bool
+}
+
+func (f *fakeMail) SendOwnerBookingRequest(_ context.Context, owner, _, _, _ string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ownerRequests = append(f.ownerRequests, owner)
+	return nil
+}
+
+func (f *fakeMail) SendNewMessage(_ context.Context, to, from, listing, preview string, toLandlord bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.messages = append(f.messages, sentMessage{to, from, listing, preview, toLandlord})
 	return nil
 }
 

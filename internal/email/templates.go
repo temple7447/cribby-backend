@@ -26,6 +26,8 @@ const (
 	supportURL  = "https://www.cribby.space/support"
 	privacyURL  = "https://www.cribby.space/privacy"
 	adminURL    = "https://admin.cribby.space/bookings"
+	inboxURL    = "https://www.cribby.space/dashboard/inbox"
+	requestsURL = "https://www.cribby.space/dashboard/requests"
 	fontStack   = "'Baloo 2','Trebuchet MS','Segoe UI',Helvetica,Arial,sans-serif"
 	bodyFontSet = "'Plus Jakarta Sans','Segoe UI',Helvetica,Arial,sans-serif"
 )
@@ -304,6 +306,52 @@ func BookingDecisionEmail(listing, status string) Message {
 		v.Rows = []kv{{"Home", listing}, {"Status", "Not approved"}}
 		v.Callout = "Don't give up — there are plenty of other homes near your school. Open the app to keep searching, and try a roommate match too."
 		v.Button = "Find another home"
+	}
+	return render(v)
+}
+
+// OwnerBookingRequestEmail tells a landlord that a student asked to book one of their listings.
+func OwnerBookingRequestEmail(student, listing, moveIn string) Message {
+	v := newView()
+	v.Subject = "New booking request: " + listing
+	v.Preheader = student + " wants to book " + listing + " — approve or decline."
+	v.Emoji, v.Band = "📋", brandMint
+	v.Title = "You have a booking request"
+	v.Intro = "A student has asked to book your home on Cribby. Review the request and approve or decline it."
+	v.Rows = []kv{{"Student", student}, {"Home", listing}, {"Move-in", prettyDate(moveIn)}, {"Status", "Waiting for your decision"}}
+	v.Button, v.ButtonURL = "Review request", requestsURL
+	v.Outro = "The student is notified by email as soon as you decide."
+	v.Reason = "You're receiving this because you posted this home on Cribby."
+	return render(v)
+}
+
+func clip(s string, n int) string {
+	r := []rune(strings.TrimSpace(s))
+	if len(r) <= n {
+		return string(r)
+	}
+	return strings.TrimSpace(string(r[:n])) + "…"
+}
+
+// NewMessageEmail tells someone they have a new chat message. toLandlord is true when the
+// recipient is the landlord (who answers from the website inbox); students reply in the app.
+func NewMessageEmail(toLandlord bool, from, listing, preview string) Message {
+	v := newView()
+	v.Subject = "New message about " + listing
+	v.Preheader = from + ": " + clip(preview, 90)
+	v.Emoji, v.Band = "💬", brandSunshine
+	v.Title = "New message"
+	v.Rows = []kv{{"From", from}, {"About", listing}}
+	v.Callout = "“" + clip(preview, 280) + "”"
+	if toLandlord {
+		v.Intro = from + " sent you a message about your listing. Quick replies get more bookings."
+		v.Button, v.ButtonURL = "Open your inbox", inboxURL
+		v.Reason = "You're receiving this because a student contacted you about a listing you posted on Cribby."
+	} else {
+		v.Intro = from + " replied to your message."
+		v.Button, v.ButtonURL = "Open Cribby", websiteURL
+		v.Outro = "Open the Cribby app and go to Chat to reply."
+		v.Reason = "You're receiving this because you messaged a landlord on Cribby."
 	}
 	return render(v)
 }

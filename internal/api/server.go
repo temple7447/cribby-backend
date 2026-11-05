@@ -114,6 +114,13 @@ func (s *Server) routes() {
 	m.Handle("GET "+p+"/places/{place_id}", s.h(s.getPlace))
 	m.Handle("DELETE "+p+"/places/{place_id}", s.h(s.deletePlace))
 
+	// landlord tools: the signed-in user's own listings' chats and booking requests
+	m.Handle("GET "+p+"/owner/summary", s.h(s.ownerSummary))
+	m.Handle("GET "+p+"/owner/conversations", s.h(s.ownerConversations))
+	m.Handle("GET "+p+"/owner/conversations/{conversation_id}", s.h(s.ownerConversation))
+	m.Handle("POST "+p+"/owner/conversations/{conversation_id}/messages", s.h(s.ownerReply))
+	m.Handle("GET "+p+"/owner/bookings", s.h(s.ownerBookings))
+
 	// bookings ("/pending" is a literal, so it wins over "/{booking_id}")
 	m.Handle("GET "+p+"/bookings", s.h(s.listMyBookings))
 	m.Handle("POST "+p+"/bookings", s.h(s.createBooking))

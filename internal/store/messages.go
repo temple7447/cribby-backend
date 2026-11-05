@@ -66,8 +66,14 @@ func ConversationForUser(ctx context.Context, ex db.Executor, id, userID int) (*
 }
 
 func AddMessage(ctx context.Context, ex db.Executor, conversationID int, sender, text string) (*model.Message, error) {
+	return AddMessageRead(ctx, ex, conversationID, sender, text, true)
+}
+
+// AddMessageRead is AddMessage with an explicit read flag: a student's message to a landlord is
+// stored unread until the landlord opens the conversation.
+func AddMessageRead(ctx context.Context, ex db.Executor, conversationID int, sender, text string, read bool) (*model.Message, error) {
 	id, err := ex.InsertID(ctx, `INSERT INTO messages (conversation_id, sender, text, read) VALUES (?,?,?,?)`,
-		conversationID, sender, text, true)
+		conversationID, sender, text, read)
 	if err != nil {
 		return nil, err
 	}

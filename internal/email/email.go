@@ -20,6 +20,10 @@ type Sender interface {
 	SendPasswordReset(ctx context.Context, to, code string) error
 	SendBookingRequest(ctx context.Context, adminEmail, studentName, listingTitle, moveInDate string) error
 	SendBookingDecision(ctx context.Context, studentEmail, listingTitle, status string) error
+	// SendOwnerBookingRequest tells a landlord a student asked to book their listing.
+	SendOwnerBookingRequest(ctx context.Context, ownerEmail, studentName, listingTitle, moveInDate string) error
+	// SendNewMessage tells someone they have a new chat message (toLandlord: the recipient is the landlord).
+	SendNewMessage(ctx context.Context, to, fromName, listingTitle, preview string, toLandlord bool) error
 }
 
 type Resend struct {
@@ -87,4 +91,12 @@ func (r *Resend) SendBookingRequest(ctx context.Context, adminEmail, studentName
 
 func (r *Resend) SendBookingDecision(ctx context.Context, studentEmail, listingTitle, status string) error {
 	return r.send(ctx, studentEmail, BookingDecisionEmail(listingTitle, status), "")
+}
+
+func (r *Resend) SendOwnerBookingRequest(ctx context.Context, ownerEmail, studentName, listingTitle, moveInDate string) error {
+	return r.send(ctx, ownerEmail, OwnerBookingRequestEmail(studentName, listingTitle, moveInDate), "")
+}
+
+func (r *Resend) SendNewMessage(ctx context.Context, to, fromName, listingTitle, preview string, toLandlord bool) error {
+	return r.send(ctx, to, NewMessageEmail(toLandlord, fromName, listingTitle, preview), "")
 }

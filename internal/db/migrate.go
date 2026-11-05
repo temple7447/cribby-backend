@@ -43,7 +43,7 @@ var migrations = []migration{
 			guarantor_signed BOOLEAN NOT NULL, lease_signed BOOLEAN NOT NULL, deposit_paid BOOLEAN NOT NULL,
 			keys_collected BOOLEAN NOT NULL,
 			created_at {TS} DEFAULT (CURRENT_TIMESTAMP) NOT NULL)`,
-		`CREATE INDEX ix_bookings_listing_id ON bookings (listing_id)`,
+		`CREATE INDEX IF NOT EXISTS ix_bookings_listing_id ON bookings (listing_id)`,
 		`CREATE INDEX ix_bookings_user_id ON bookings (user_id)`,
 		`CREATE TABLE favorites (
 			id {PK}, user_id INTEGER NOT NULL REFERENCES users (id), listing_id INTEGER NOT NULL REFERENCES listings (id),
@@ -239,6 +239,11 @@ var goMigrations = []struct {
 	{"006_listing_video", []string{
 		`ALTER TABLE listings ADD COLUMN video_url VARCHAR(600)`,
 		`ALTER TABLE listings ADD COLUMN video_public_id VARCHAR(255)`,
+	}},
+	// Landlords look up conversations and bookings by listing, so index those.
+	{"007_owner_inbox_indexes", []string{
+		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,
+		`CREATE INDEX IF NOT EXISTS ix_bookings_listing_id ON bookings (listing_id)`,
 	}},
 }
 
