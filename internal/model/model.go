@@ -243,6 +243,22 @@ type School struct {
 	GooglePlaceID *string `json:"google_place_id"`
 }
 
+// ClientError is a crash or error reported by the app or website, grouped by fingerprint.
+type ClientError struct {
+	ID          int     `json:"id"`
+	Source      string  `json:"source"` // app | web
+	Message     string  `json:"message"`
+	Stack       string  `json:"stack"`
+	Route       string  `json:"route"`
+	AppVersion  string  `json:"app_version"`
+	Platform    string  `json:"platform"`
+	UserID      *int    `json:"user_id"`
+	Count       int     `json:"count"`
+	FirstSeenAt db.Time `json:"first_seen_at"`
+	LastSeenAt  db.Time `json:"last_seen_at"`
+	Resolved    bool    `json:"resolved"`
+}
+
 // StudentSummary is what a landlord sees of someone who contacted them: enough to judge the
 // request, never contact details. Email appears only once a booking is approved.
 type StudentSummary struct {

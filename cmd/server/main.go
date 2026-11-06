@@ -57,6 +57,11 @@ func main() {
 	if *migrateOnly {
 		return
 	}
+	// Only a server that will actually issue sign-in tokens needs a real secret.
+	if err := cfg.Validate(); err != nil {
+		log.Error("refusing to start with unsafe settings", "err", err)
+		os.Exit(1)
+	}
 
 	if cfg.SecretKey == "change-me-in-production" {
 		log.Warn("SECRET_KEY is the insecure default — set it before deploying")

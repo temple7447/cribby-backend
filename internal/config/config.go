@@ -5,6 +5,7 @@ package config
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -159,4 +160,36 @@ func loadDotEnv(path string) {
 			os.Setenv(k, v)
 		}
 	}
+}
+
+// DefaultSecretKey is the placeholder used when SECRET_KEY isn't set. It is public (it's in the
+// source), so anyone could forge sign-in tokens, including admin ones, against a server using it.
+const DefaultSecretKey = "change-me-in-production"
+
+const minSecretKeyLength = 32
+
+// Production reports whether this looks like a real deployment: ENV=production, or a database
+// that isn't the throwaway local SQLite file.
+func (s *Settings) Production() bool {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("ENV")), "production") {
+		return true
+	}
+	u := strings.ToLower(s.DatabaseURL)
+	return !strings.HasPrefix(u, "sqlite")
+}
+
+// Validate refuses settings that would be unsafe on a real server. Local development (SQLite, no
+// ENV) is left alone so it still works with zero setup.
+func (s *Settings) Validate() error {
+	if !s.Production() {
+		return nil
+	}
+	if s.SecretKey == "" || s.SecretKey == DefaultSecretKey {
+		return errors.New("SECRET_KEY is not set (or is the public default). Set it to a long random value, " +
+			"for example: openssl rand -hex 32. Keep the same value across deploys or everyone is signed out")
+	}
+	if len(s.SecretKey) < minSecretKeyLength {
+		return errors.New("SECRET_KEY is too short: use at least 32 characters (openssl rand -hex 32)")
+	}
+	return nil
 }

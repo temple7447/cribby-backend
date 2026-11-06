@@ -41,6 +41,9 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	if err := bindJSON(r, &p); err != nil {
 		return err
 	}
+	if ok, wait := s.auth.signups.take(clientIP(r), maxSignupsPerIP, time.Now()); !ok {
+		return tooManyRequests("Too many accounts were created from this connection.", wait)
+	}
 	ctx := r.Context()
 	exists, err := store.UserByEmail(ctx, s.DB.Executor, p.Email)
 	if err != nil {
@@ -118,6 +121,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ident := strings.TrimSpace(p.Email)
+	ip, now := clientIP(r), time.Now()
+	if blocked, wait := s.auth.loginBlocked(ident, ip, now); blocked {
+		return tooManyRequests("Too many failed sign-in attempts.", wait)
+	}
 	var user *model.User
 	var err error
 	if strings.Contains(ident, "@") {
@@ -131,8 +138,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if user == nil || !security.VerifyPassword(p.Password, user.HashedPassword) {
+		s.auth.loginFailed(ident, ip, now)
 		return httpErr(http.StatusUnauthorized, "Incorrect email, username or password")
 	}
+	s.auth.loginSucceeded(ident, ip)
 	if user.IsSuspended {
 		// 403, not 401 — the credentials were correct, access is what's denied.
 		return httpErr(http.StatusForbidden, "Your account has been suspended")
@@ -195,12 +204,18 @@ func (s *Server) confirmVerification(w http.ResponseWriter, r *http.Request) err
 	if user.VerificationCodeHash == nil || user.VerificationCodeExpiresAt == nil {
 		return httpErr(http.StatusBadRequest, "No verification code requested — request one first")
 	}
+	codeKey := fmt.Sprintf("verify:%d", user.ID)
+	if n, wait := s.auth.codeFails.status(codeKey, time.Now()); n >= maxCodeGuesses {
+		return tooManyRequests("Too many wrong codes.", wait)
+	}
 	if time.Now().UTC().After(user.VerificationCodeExpiresAt.Time) {
 		return httpErr(http.StatusBadRequest, "Verification code expired — request a new one")
 	}
 	if !security.CodesEqual(security.HashCode(strings.TrimSpace(p.Code)), *user.VerificationCodeHash) {
+		s.auth.codeFails.record(codeKey, time.Now())
 		return httpErr(http.StatusBadRequest, "Incorrect verification code")
 	}
+	s.auth.codeFails.clear(codeKey)
 	if err := store.MarkVerified(r.Context(), s.DB.Executor, user.ID); err != nil {
 		return err
 	}
@@ -222,6 +237,10 @@ func (s *Server) requestPasswordReset(w http.ResponseWriter, r *http.Request) er
 	}
 	if err := bindJSON(r, &p); err != nil {
 		return err
+	}
+	// Throttled by address, never by account: the answer must not reveal whether an email exists.
+	if ok, wait := s.auth.resets.take(clientIP(r), maxResetsPerIP, time.Now()); !ok {
+		return tooManyRequests("Too many password reset requests.", wait)
 	}
 	ctx := r.Context()
 	user, err := store.UserByEmail(ctx, s.DB.Executor, p.Email)
@@ -265,20 +284,28 @@ func (s *Server) confirmPasswordReset(w http.ResponseWriter, r *http.Request) er
 	}
 	invalid := httpErr(http.StatusBadRequest, "Invalid or expired code")
 	ctx := r.Context()
+	// Counted per email whether or not the account exists, so this can't be used to probe either.
+	codeKey := "reset:" + strings.ToLower(strings.TrimSpace(p.Email))
+	if n, wait := s.auth.codeFails.status(codeKey, time.Now()); n >= maxCodeGuesses {
+		return tooManyRequests("Too many wrong codes.", wait)
+	}
 
 	user, err := store.UserByEmail(ctx, s.DB.Executor, p.Email)
 	if err != nil {
 		return err
 	}
 	if user == nil || user.PasswordResetCodeHash == nil || user.PasswordResetExpiresAt == nil {
+		s.auth.codeFails.record(codeKey, time.Now())
 		return invalid
 	}
 	if time.Now().UTC().After(user.PasswordResetExpiresAt.Time) {
 		return invalid
 	}
 	if !security.CodesEqual(security.HashCode(strings.TrimSpace(p.Code)), *user.PasswordResetCodeHash) {
+		s.auth.codeFails.record(codeKey, time.Now())
 		return invalid
 	}
+	s.auth.codeFails.clear(codeKey)
 
 	hash, err := security.HashPassword(p.NewPassword)
 	if err != nil {

@@ -29,15 +29,17 @@ type Server struct {
 	photos storage.Storage
 	maps   *google.Client
 	// assistant is the OpenRouter-backed Cribby AI; chats rate-limits it per user.
-	assistant *ai.Client
-	chats     *chatLimiter
-	mapsLimit *chatLimiter // per-user cap on Google-backed calls (Google bills per request)
-	log       *slog.Logger
-	mux       *http.ServeMux
+	assistant  *ai.Client
+	chats      *chatLimiter
+	errReports *attemptLimiter // per-address cap on client error reports
+	auth       *authLimits     // throttles sign-in, sign-up, password reset and code guessing
+	mapsLimit  *chatLimiter    // per-user cap on Google-backed calls (Google bills per request)
+	log        *slog.Logger
+	mux        *http.ServeMux
 }
 
 func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, assistant *ai.Client, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), mapsLimit: newLimiter(150, 10*time.Minute), log: log, mux: http.NewServeMux()}
+	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), auth: newAuthLimits(), errReports: newAttemptLimiter(time.Hour), mapsLimit: newLimiter(150, 10*time.Minute), log: log, mux: http.NewServeMux()}
 	s.routes()
 	return s
 }
@@ -54,6 +56,13 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+
+	m.HandleFunc("GET /health/ready", s.ready)
+
+	// crash / error reports from the app and website (public, throttled) and the admin view of them
+	m.Handle("POST "+p+"/client-errors", s.h(s.reportClientError))
+	m.Handle("GET "+p+"/admin/client-errors", s.h(s.adminClientErrors))
+	m.Handle("PATCH "+p+"/admin/client-errors/{error_id}", s.h(s.adminResolveClientError))
 
 	// auth
 	m.Handle("POST "+p+"/auth/signup", s.h(s.signup))

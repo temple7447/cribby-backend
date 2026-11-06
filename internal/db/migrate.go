@@ -240,6 +240,18 @@ var goMigrations = []struct {
 		`ALTER TABLE listings ADD COLUMN video_url VARCHAR(600)`,
 		`ALTER TABLE listings ADD COLUMN video_public_id VARCHAR(255)`,
 	}},
+	// Crash and error reports sent by the app and website. Identical errors are grouped on a
+	// fingerprint so a crash loop can't flood the table.
+	{"008_client_errors", []string{
+		`CREATE TABLE client_errors (
+			id {PK}, fingerprint VARCHAR(64) NOT NULL, source VARCHAR(10) NOT NULL,
+			message VARCHAR(600) NOT NULL, stack TEXT NOT NULL DEFAULT '', route VARCHAR(200) NOT NULL DEFAULT '',
+			app_version VARCHAR(40) NOT NULL DEFAULT '', platform VARCHAR(40) NOT NULL DEFAULT '',
+			user_id INTEGER, count INTEGER NOT NULL DEFAULT 1,
+			first_seen_at {TS} NOT NULL, last_seen_at {TS} NOT NULL, resolved BOOLEAN NOT NULL DEFAULT false,
+			CONSTRAINT uq_client_errors_fingerprint UNIQUE (fingerprint))`,
+		`CREATE INDEX ix_client_errors_last_seen ON client_errors (last_seen_at)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

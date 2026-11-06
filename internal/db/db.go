@@ -128,6 +128,13 @@ func Open(rawURL string) (*DB, error) {
 	return &DB{Executor: Executor{r: sqlDB, Dialect: dialect}, SQL: sqlDB}, nil
 }
 
+// ParseURL breaks a DATABASE_URL into its dialect and a driver connection string (for SQLite that
+// is "file:<path>?..."; for Postgres a standard postgres:// URL). Tools like backup use it.
+func ParseURL(raw string) (Dialect, string, error) {
+	d, _, dsn, err := parseURL(raw)
+	return d, dsn, err
+}
+
 func parseURL(raw string) (Dialect, string, string, error) {
 	scheme, rest, ok := strings.Cut(raw, "://")
 	if !ok {

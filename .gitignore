@@ -8,3 +8,9 @@
 *.db-journal
 .env
 .DS_Store
+
+# database backups hold every user's data: never commit them
+/backups/
+cribby-backup-*
+*.dump
+*.sqlite

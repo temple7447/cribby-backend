@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -45,5 +46,29 @@ func TestCORSOriginsAcceptJSONOrCSV(t *testing.T) {
 	t.Setenv("BACKEND_CORS_ORIGINS", "https://c.com, https://d.com")
 	if got := Load().BackendCORSOrigins; !reflect.DeepEqual(got, []string{"https://c.com", "https://d.com"}) {
 		t.Fatalf("csv: %v", got)
+	}
+}
+
+func TestValidateRefusesTheDefaultSecretOutsideDevelopment(t *testing.T) {
+	long := strings.Repeat("k", 40)
+	cases := []struct {
+		name string
+		s    Settings
+		env  string
+		ok   bool
+	}{
+		{"local sqlite with the default key is fine for development", Settings{DatabaseURL: "sqlite+aiosqlite:///./campus.db", SecretKey: DefaultSecretKey}, "", true},
+		{"postgres with the default key is refused", Settings{DatabaseURL: "postgresql://u@h/db", SecretKey: DefaultSecretKey}, "", false},
+		{"postgres with no key is refused", Settings{DatabaseURL: "postgresql://u@h/db", SecretKey: ""}, "", false},
+		{"postgres with a short key is refused", Settings{DatabaseURL: "postgresql://u@h/db", SecretKey: "short"}, "", false},
+		{"postgres with a long key is fine", Settings{DatabaseURL: "postgresql://u@h/db", SecretKey: long}, "", true},
+		{"ENV=production applies to sqlite too", Settings{DatabaseURL: "sqlite:///./x.db", SecretKey: DefaultSecretKey}, "production", false},
+		{"ENV=production with a long key is fine", Settings{DatabaseURL: "sqlite:///./x.db", SecretKey: long}, "Production", true},
+	}
+	for _, c := range cases {
+		t.Setenv("ENV", c.env)
+		if err := c.s.Validate(); (err == nil) != c.ok {
+			t.Errorf("%s: err = %v, want ok=%v", c.name, err, c.ok)
+		}
 	}
 }
