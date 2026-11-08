@@ -128,6 +128,18 @@ func (f *fakeStorage) DestroyVideo(_ context.Context, id string) error {
 	return nil
 }
 
+func (f *fakeStorage) UploadPrivate(_ context.Context, _ []byte, _ string) (storage.Uploaded, error) {
+	f.uploads++
+	return storage.Uploaded{PublicID: fmt.Sprintf("cribby/private%d", f.uploads)}, nil
+}
+
+func (f *fakeStorage) DestroyPrivate(_ context.Context, id string) error {
+	f.destroyed = append(f.destroyed, id)
+	return nil
+}
+
+func (f *fakeStorage) SignedURL(id string) string { return "https://cdn.test/signed/" + id }
+
 // fakeGoogle is a local stand-in for Places + Routes so tests never spend quota.
 type fakeGoogle struct {
 	srv    *httptest.Server

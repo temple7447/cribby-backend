@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -50,6 +51,12 @@ type Storage interface {
 	// UploadVideo stores a video and returns a URL that plays in any browser (MP4/H.264).
 	UploadVideo(ctx context.Context, file []byte, folder string) (Uploaded, error)
 	DestroyVideo(ctx context.Context, publicID string) error
+	// UploadPrivate stores an image that must not be publicly reachable (an ID document). It can
+	// only be viewed through SignedURL.
+	UploadPrivate(ctx context.Context, file []byte, folder string) (Uploaded, error)
+	DestroyPrivate(ctx context.Context, publicID string) error
+	// SignedURL is a delivery URL for a private image, valid only because it carries our signature.
+	SignedURL(publicID string) string
 }
 
 type Cloudinary struct {
@@ -192,4 +199,31 @@ func (c *Cloudinary) UploadVideo(ctx context.Context, file []byte, folder string
 func (c *Cloudinary) DestroyVideo(ctx context.Context, publicID string) error {
 	_, err := c.call(ctx, "video", "destroy", map[string]string{"public_id": publicID}, nil, "")
 	return err
+}
+
+// UploadPrivate stores an image as type "authenticated": Cloudinary refuses to serve it unless the
+// URL is signed, so an ID photo can't be found by guessing or sharing a link.
+func (c *Cloudinary) UploadPrivate(ctx context.Context, file []byte, folder string) (Uploaded, error) {
+	out, err := c.call(ctx, "image", "upload", map[string]string{"folder": folder, "type": "authenticated"}, file, "")
+	if err != nil {
+		return Uploaded{}, err
+	}
+	publicID, _ := out["public_id"].(string)
+	if publicID == "" {
+		return Uploaded{}, errors.New("cloudinary private upload: response missing public_id")
+	}
+	return Uploaded{PublicID: publicID}, nil
+}
+
+func (c *Cloudinary) DestroyPrivate(ctx context.Context, publicID string) error {
+	_, err := c.call(ctx, "image", "destroy", map[string]string{"public_id": publicID, "type": "authenticated"}, nil, "")
+	return err
+}
+
+// SignedURL builds Cloudinary's signed delivery URL: s--<first 8 chars of base64url(sha1(public_id +
+// secret))>--. It has no expiry, so it is only ever handed to signed-in admins and never stored.
+func (c *Cloudinary) SignedURL(publicID string) string {
+	sum := sha1.Sum([]byte(publicID + c.APISecret))
+	sig := base64.URLEncoding.EncodeToString(sum[:])[:8]
+	return fmt.Sprintf("https://res.cloudinary.com/%s/image/authenticated/s--%s--/%s", c.CloudName, sig, publicID)
 }

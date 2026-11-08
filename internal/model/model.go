@@ -294,3 +294,16 @@ type OwnerBooking struct {
 	CreatedAt         db.Time        `json:"created_at"`
 	Student           StudentSummary `json:"student"`
 }
+
+// LandlordVerification is a landlord's identity check. IDPhotoPublicID is internal; admins get a
+// signed link instead.
+type LandlordVerification struct {
+	UserID          int      `json:"user_id"`
+	Status          string   `json:"status"` // none | pending | verified | rejected
+	Phone           string   `json:"phone"`
+	IDType          string   `json:"id_type"`
+	IDPhotoPublicID string   `json:"-"`
+	Note            string   `json:"note"` // why it was rejected
+	SubmittedAt     *db.Time `json:"submitted_at"`
+	ReviewedAt      *db.Time `json:"reviewed_at"`
+}

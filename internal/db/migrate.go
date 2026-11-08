@@ -252,6 +252,16 @@ var goMigrations = []struct {
 			CONSTRAINT uq_client_errors_fingerprint UNIQUE (fingerprint))`,
 		`CREATE INDEX ix_client_errors_last_seen ON client_errors (last_seen_at)`,
 	}},
+	// Landlord identity checks. One row per person; an admin looks at the ID photo and approves or
+	// rejects. The photo is stored as a private image and only ever shown to admins.
+	{"009_landlord_verification", []string{
+		`CREATE TABLE landlord_verifications (
+			user_id INTEGER NOT NULL PRIMARY KEY, status VARCHAR(12) NOT NULL,
+			phone VARCHAR(30) NOT NULL, id_type VARCHAR(20) NOT NULL,
+			id_photo_public_id VARCHAR(255) NOT NULL DEFAULT '', note VARCHAR(500) NOT NULL DEFAULT '',
+			submitted_at {TS} NOT NULL, reviewed_at {TS})`,
+		`CREATE INDEX ix_landlord_verifications_status ON landlord_verifications (status, submitted_at)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

@@ -134,11 +134,15 @@ func (s *Server) postUserListing(w http.ResponseWriter, r *http.Request, user *m
 		total = *in.Total
 	}
 	owner := user.ID
+	verified, err := store.IsLandlordVerified(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
 	created, err := store.CreateListing(ctx, ex, &model.Listing{
 		Title: in.Title, Type: in.Type, PricePer: in.PricePer, Total: total, UtilitiesMonthly: in.UtilitiesMonthly,
 		Deposit: in.Deposit, Walk: s.walkMinutes(ctx, user, *in.Latitude, *in.Longitude),
 		Latitude: in.Latitude, Longitude: in.Longitude, Grad: "from-coral to-sunshine", Emoji: "🏠",
-		Amenities: in.Amenities, LandlordName: publicName(user), OwnerID: &owner, Status: model.ListingPending,
+		Amenities: in.Amenities, LandlordName: publicName(user), LandlordVerified: verified, OwnerID: &owner, Status: model.ListingPending,
 		Description: in.Description, Address: in.Address,
 	})
 	if err != nil {
