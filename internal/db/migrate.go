@@ -262,6 +262,16 @@ var goMigrations = []struct {
 			submitted_at {TS} NOT NULL, reviewed_at {TS})`,
 		`CREATE INDEX ix_landlord_verifications_status ON landlord_verifications (status, submitted_at)`,
 	}},
+	// Reviews of a home (and, through it, its landlord). One per person per listing; only people who
+	// booked or messaged about the home may write one. listings.rating/reviews are kept in step.
+	{"010_reviews", []string{
+		`CREATE TABLE reviews (
+			id {PK}, listing_id INTEGER NOT NULL REFERENCES listings (id), user_id INTEGER NOT NULL REFERENCES users (id),
+			rating INTEGER NOT NULL, body VARCHAR(1000) NOT NULL DEFAULT '',
+			created_at {TS} NOT NULL, updated_at {TS} NOT NULL,
+			CONSTRAINT uq_reviews_listing_user UNIQUE (listing_id, user_id))`,
+		`CREATE INDEX ix_reviews_listing ON reviews (listing_id, created_at)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

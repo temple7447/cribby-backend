@@ -307,3 +307,15 @@ type LandlordVerification struct {
 	SubmittedAt     *db.Time `json:"submitted_at"`
 	ReviewedAt      *db.Time `json:"reviewed_at"`
 }
+
+// Review is one person's rating of a home. Reviewer is a first name only.
+type Review struct {
+	ID        int     `json:"id"`
+	ListingID int     `json:"listing_id"`
+	UserID    int     `json:"-"`
+	Rating    int     `json:"rating"`
+	Body      string  `json:"body"`
+	Reviewer  string  `json:"reviewer"`
+	Mine      bool    `json:"mine"`
+	CreatedAt db.Time `json:"created_at"`
+}
