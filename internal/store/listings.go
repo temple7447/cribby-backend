@@ -140,6 +140,12 @@ func SetListingVideo(ctx context.Context, ex db.Executor, id int, url, publicID 
 	return err
 }
 
+// SetListingVerified marks whether Cribby has checked the home itself (not just the landlord's ID).
+func SetListingVerified(ctx context.Context, ex db.Executor, id int, verified bool) error {
+	_, err := ex.Exec(ctx, `UPDATE listings SET verified = ? WHERE id = ?`, verified, id)
+	return err
+}
+
 func SetListingHidden(ctx context.Context, ex db.Executor, id int, hidden bool) error {
 	_, err := ex.Exec(ctx, `UPDATE listings SET is_hidden = ? WHERE id = ?`, hidden, id)
 	return err

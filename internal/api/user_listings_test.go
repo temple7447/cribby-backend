@@ -1,13 +1,21 @@
 package api_test
 
 import (
+	"strings"
 	"testing"
 )
 
+// apartment returns a valid listing body. Each title gets its own address and spot, so two
+// different titles are never mistaken for the same home by duplicate detection.
 func apartment(title string) obj {
+	sum := 0
+	for _, c := range title {
+		sum += int(c)
+	}
+	off := float64(sum%500) * 0.001
 	return obj{
 		"title": title, "type": "Self-contain", "price_per": 350000, "deposit": 50000, "utilities_monthly": 5000,
-		"latitude": 6.5180, "longitude": 3.3910, "address": "12 Akoka Rd, Yaba", "description": "Quiet, 24h light",
+		"latitude": 6.5180 + off, "longitude": 3.3910 + off, "address": "12 Akoka Rd, Yaba (" + title + ")", "description": "Quiet, 24h light",
 		"amenities": []string{"Wi-Fi", " ", "Water"},
 	}
 }
@@ -91,7 +99,9 @@ func TestPostValidationRequiresPinAndSaneValues(t *testing.T) {
 func TestPostingIsCappedPerDay(t *testing.T) {
 	e := newEnv(t)
 	token, _ := e.signup("spammer@gmail.com")
-	for i := 0; i < 5; i++ {
+	first := id(e.expect(201, "POST", "/listings", token, apartment("Flat number 0")).(obj))
+	e.exec(`UPDATE listings SET status = 'approved' WHERE id = ?`, first) // lifts the new-poster limit; the daily cap remains
+	for i := 1; i < 5; i++ {
 		e.expect(201, "POST", "/listings", token, apartment(path("Flat number %d", i)))
 	}
 	e.expect(429, "POST", "/listings", token, apartment("One too many"))
@@ -223,5 +233,195 @@ func TestVideoValidation(t *testing.T) {
 	}
 	if c := up("ok.mp4", "video/mp4", mp4); c != 200 {
 		t.Fatalf("valid video: %d", c)
+	}
+}
+
+func TestNewPostersAreLimitedAndVerifiedLandlordsGoLive(t *testing.T) {
+	e := newEnv(t)
+	e.photos.configured, e.photos.urlFmt, e.photos.idFmt = true, "https://cdn.test/p%d.jpg", "cribby/p%d"
+	token, user := e.signup("newbie@gmail.com")
+
+	// a brand-new poster waits for review and can add 2 a day
+	first := e.expect(201, "POST", "/listings", token, apartment("Flat One")).(obj)
+	if first["status"] != "pending" {
+		t.Fatalf("new poster should wait for review: %v", first["status"])
+	}
+	e.expect(201, "POST", "/listings", token, apartment("Flat Two"))
+	e.expect(429, "POST", "/listings", token, apartment("Flat Three"))
+
+	// once an admin has approved one, the limit lifts
+	e.exec(`UPDATE listings SET status = 'approved' WHERE id = ?`, id(first))
+	e.expect(201, "POST", "/listings", token, apartment("Flat Three"))
+
+	// a verified landlord's listing is live at once, and editing it keeps it live
+	e.exec(`INSERT INTO landlord_verifications (user_id, status, phone, id_type, submitted_at) VALUES (?, 'verified', '08031234567', 'nin', ?)`, id(user), past())
+	live := e.expect(201, "POST", "/listings", token, apartment("Flat Four")).(obj)
+	if live["status"] != "approved" {
+		t.Fatalf("verified landlord should go live: %v", live["status"])
+	}
+	edited := e.expect(200, "PATCH", path("/listings/%d", id(live)), token, obj{"title": "Four, renamed", "type": "Self-contain", "price_per": 350000, "deposit": 50000, "utilities_monthly": 5000, "latitude": 6.5, "longitude": 3.4, "address": "somewhere else", "description": "x"}).(obj)
+	if edited["status"] != "approved" {
+		t.Fatalf("a verified landlord's edit stays live: %v", edited["status"])
+	}
+}
+
+func TestDuplicateListingsAreBlockedOrFlagged(t *testing.T) {
+	e := newEnv(t)
+	a, _ := e.signup("a@gmail.com")
+	b, _ := e.signup("b@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+
+	orig := id(e.expect(201, "POST", "/listings", a, apartment("Original")).(obj))
+	// the same person posting the same home again is stopped
+	e.expect(409, "POST", "/listings", a, apartment("Original"))
+	// someone else posting it (same address, different spacing and case) is held and flagged
+	copyOf := apartment("Original")
+	copyOf["address"] = "  12 AKOKA rd,   Yaba (Original) "
+	dup := id(e.expect(201, "POST", "/listings", b, copyOf).(obj))
+	var flagged any
+	for _, it := range list(e.expect(200, "GET", "/admin/listings?status=pending", admin, nil)) {
+		if id(it.(obj)) == dup {
+			flagged = it.(obj)["duplicate_of"]
+		}
+	}
+	if flagged == nil || int(flagged.(float64)) != orig {
+		t.Fatalf("duplicate should point at #%d, got %v", orig, flagged)
+	}
+}
+
+func TestOnlyVerifiersMarkHomesVerifiedAndMovingClearsIt(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.signup("owner@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+
+	body := apartment("Checked flat")
+	l := e.expect(201, "POST", "/listings", owner, body).(obj)
+	lid := id(l)
+	if l["verified"] != false {
+		t.Fatalf("new listings start unverified: %v", l["verified"])
+	}
+	url := path("/listings/%d/verified", lid)
+	e.expect(401, "PATCH", url, "", obj{"verified": true})
+	e.expect(403, "PATCH", url, owner, obj{"verified": true}) // you can't verify your own home
+	if got := e.expect(200, "PATCH", url, admin, obj{"verified": true}).(obj); got["verified"] != true {
+		t.Fatalf("admin verify: %v", got["verified"])
+	}
+	e.expect(404, "PATCH", path("/listings/%d/verified", 99999), admin, obj{"verified": true})
+
+	// fixing a typo in the description keeps the mark; moving the home removes it
+	same := apartment("Checked flat")
+	same["description"] = "Quiet, 24h light, new gate"
+	if got := e.expect(200, "PATCH", path("/listings/%d", lid), owner, same).(obj); got["verified"] != true {
+		t.Fatalf("same place keeps the mark: %v", got["verified"])
+	}
+	moved := apartment("Checked flat")
+	moved["address"] = "99 Somewhere Else"
+	if got := e.expect(200, "PATCH", path("/listings/%d", lid), owner, moved).(obj); got["verified"] != false {
+		t.Fatalf("a new address must be checked again: %v", got["verified"])
+	}
+}
+
+func TestVerifiersCanCheckHomesButNotTheirOwn(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.signup("owner@gmail.com")
+	cousin, cousinUser := e.signup("cousin@gmail.com")
+	other, _ := e.signup("other@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+	cid := id(cousinUser)
+
+	// nobody is a verifier until an admin says so
+	if got := e.expect(200, "GET", "/verifier/me", cousin, nil).(obj); got["is_verifier"] != false {
+		t.Fatalf("not yet: %v", got)
+	}
+	e.expect(403, "GET", "/verifier/queue", cousin, nil)
+	e.expect(403, "PUT", path("/admin/verifiers/%d", cid), cousin, obj{"kind": "cousin"}) // can't promote yourself
+	e.expect(422, "PUT", path("/admin/verifiers/%d", cid), admin, obj{"kind": "king"})
+	e.expect(404, "PUT", path("/admin/verifiers/%d", 99999), admin, obj{"kind": "cousin"})
+	vs := list(e.expect(200, "PUT", path("/admin/verifiers/%d", cid), admin, obj{"kind": "cousin", "campus": " UNIBEN "}))
+	if len(vs) != 1 || vs[0].(obj)["campus"] != "UNIBEN" {
+		t.Fatalf("verifiers: %v", vs)
+	}
+	if got := e.expect(200, "GET", "/verifier/me", cousin, nil).(obj); got["is_verifier"] != true {
+		t.Fatalf("now a verifier: %v", got)
+	}
+
+	// a live listing from someone else is in the queue; the cousin's own is not
+	e.exec(`UPDATE listings SET status = 'approved' WHERE 1 = 1`)
+	theirs := id(e.expect(201, "POST", "/listings", owner, apartment("Owner flat")).(obj))
+	mine := id(e.expect(201, "POST", "/listings", cousin, apartment("Cousin flat")).(obj))
+	e.exec(`UPDATE listings SET status = 'approved' WHERE id IN (?, ?)`, theirs, mine)
+	queue := list(e.expect(200, "GET", "/verifier/queue", cousin, nil))
+	if len(queue) != 1 || id(queue[0].(obj)) != theirs {
+		t.Fatalf("queue: %v", queue)
+	}
+	e.expect(403, "PATCH", path("/listings/%d/verified", mine), cousin, obj{"verified": true}) // not your own
+	e.expect(403, "PATCH", path("/listings/%d/verified", theirs), other, obj{"verified": true})
+	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": true})
+	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": true}) // twice counts once
+	vs = list(e.expect(200, "GET", "/admin/verifiers", admin, nil))
+	if num(vs[0].(obj), "verified_count") != 1 {
+		t.Fatalf("count: %v", vs[0])
+	}
+	if q := list(e.expect(200, "GET", "/verifier/queue", cousin, nil)); len(q) != 0 {
+		t.Fatalf("queue should be empty: %v", q)
+	}
+
+	// removing the role takes the powers away
+	e.expect(204, "DELETE", path("/admin/verifiers/%d", cid), admin, nil)
+	e.expect(403, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": false})
+}
+
+func TestChecklistKeepsThePhonePrivateAndCatchesRepostedNumbers(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.signup("cousin@gmail.com")
+	agent, _ := e.signup("agent@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+	a := id(e.expect(201, "POST", "/listings", owner, apartment("Cousin find")).(obj))
+	b := id(e.expect(201, "POST", "/listings", agent, apartment("Agent repost")).(obj))
+	e.exec(`UPDATE listings SET status = 'approved' WHERE id IN (?, ?)`, a, b)
+
+	check := obj{"condition": "good", "water": "borehole", "power": "most_of_day", "permission": true, "contact_phone": "0803 123 4567"}
+	e.expect(401, "PUT", path("/listings/%d/checklist", a), "", check)
+	e.expect(403, "PUT", path("/listings/%d/checklist", a), agent, check) // not your listing
+	e.expect(422, "PUT", path("/listings/%d/checklist", a), owner, obj{"water": "ocean"})
+	e.expect(422, "PUT", path("/listings/%d/checklist", a), owner, obj{"contact_phone": "abc"})
+	got := e.expect(200, "PUT", path("/listings/%d/checklist", a), owner, check).(obj)
+	if c := got["checklist"].(obj); c["water"] != "borehole" || c["contact_phone"] != "08031234567" {
+		t.Fatalf("owner sees it all: %v", c)
+	}
+
+	// everyone can read the findings; only the owner and admins get the number
+	pub := e.expect(200, "GET", path("/listings/%d", a), "", nil).(obj)["checklist"].(obj)
+	if pub["condition"] != "good" || pub["permission"] != true {
+		t.Fatalf("public findings: %v", pub)
+	}
+	if _, leaked := pub["contact_phone"]; leaked {
+		t.Fatalf("the landlord's number must stay private: %v", pub)
+	}
+	if c := e.expect(200, "GET", path("/listings/%d", a), admin, nil).(obj)["checklist"].(obj); c["contact_phone"] != "08031234567" {
+		t.Fatalf("admin sees the number: %v", c)
+	}
+	if strings.Contains(toJSON(e.expect(200, "GET", "/listings", "", nil)), "contact_phone") {
+		t.Fatal("lists must not carry checklists")
+	}
+
+	// the same number on someone else's home is held for an admin
+	e.expect(200, "PUT", path("/listings/%d/checklist", b), agent, check)
+	if n := e.count(`SELECT COUNT(*) FROM listings WHERE id = ? AND status = 'pending'`, b); n != 1 {
+		t.Fatal("the repost should go back to review")
+	}
+	if n := e.count(`SELECT COUNT(*) FROM listing_flags WHERE listing_id = ? AND duplicate_of = ?`, b, a); n != 1 {
+		t.Fatal("the repost should be flagged against the original")
+	}
+	// ...but one landlord with several flats is fine
+	c2 := id(e.expect(201, "POST", "/listings", owner, apartment("Second flat")).(obj))
+	e.exec(`UPDATE listings SET status = 'approved' WHERE id = ?`, c2)
+	e.expect(200, "PUT", path("/listings/%d/checklist", c2), owner, check)
+	if n := e.count(`SELECT COUNT(*) FROM listings WHERE id = ? AND status = 'approved'`, c2); n != 1 {
+		t.Fatal("same owner, same number is normal")
 	}
 }

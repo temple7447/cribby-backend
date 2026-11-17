@@ -75,6 +75,7 @@ type Listing struct {
 	ReviewNote           *string             `json:"review_note"` // why an admin rejected it, shown to the owner
 	VideoURL             *string             `json:"video_url"`   // a playable (MP4) walkthrough the poster uploaded, if any
 	VideoPublicID        *string             `json:"-"`
+	Checklist            *Checklist          `json:"checklist,omitempty"` // only on a single listing, not in lists
 }
 
 // Listing statuses. Only approved listings are public.
@@ -318,4 +319,25 @@ type Review struct {
 	Reviewer  string  `json:"reviewer"`
 	Mine      bool    `json:"mine"`
 	CreatedAt db.Time `json:"created_at"`
+}
+
+// Verifier is someone trusted to check homes in person.
+type Verifier struct {
+	UserID        int     `json:"user_id"`
+	Kind          string  `json:"kind"` // cousin | ambassador
+	Campus        string  `json:"campus"`
+	VerifiedCount int     `json:"verified_count"`
+	CreatedAt     db.Time `json:"created_at"`
+	Email         string  `json:"email"`
+	Name          string  `json:"name"`
+}
+
+// Checklist is what the person who visited or filmed a home found. ContactPhone is private: only the
+// owner, admins and verifiers get it back.
+type Checklist struct {
+	Condition    string `json:"condition"` // good | fair | needs_work
+	Water        string `json:"water"`     // tap | borehole | well | none
+	Power        string `json:"power"`     // always | most_of_day | few_hours | none
+	Permission   bool   `json:"permission"`
+	ContactPhone string `json:"contact_phone,omitempty"`
 }

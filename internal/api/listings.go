@@ -75,6 +75,9 @@ func (s *Server) getListing(w http.ResponseWriter, r *http.Request) error {
 		km := geo.Round2(geo.HaversineKM(*lat, *lng, *l.Latitude, *l.Longitude))
 		l.DistanceKM = &km
 	}
+	if err := s.attachChecklist(r, l); err != nil {
+		return err
+	}
 	writeJSON(w, http.StatusOK, l)
 	return nil
 }
@@ -227,6 +230,9 @@ func (s *Server) deleteListingPhoto(w http.ResponseWriter, r *http.Request) erro
 func (s *Server) respondListing(w http.ResponseWriter, r *http.Request, id int) error {
 	l, err := store.ListingByID(r.Context(), s.DB.Executor, id)
 	if err != nil {
+		return err
+	}
+	if err := s.attachChecklist(r, l); err != nil {
 		return err
 	}
 	writeJSON(w, http.StatusOK, l)

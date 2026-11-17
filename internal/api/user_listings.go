@@ -21,6 +21,7 @@ import (
 const (
 	maxListingPhotos   = 10
 	maxPostsPerDay     = 5
+	maxNewPosterPerDay = 2 // until someone has a listing an admin approved, or a verified ID
 	walkSpeedKMH       = 5.0
 	walkDetourFactor   = 1.3 // streets aren't straight lines
 	maxDescriptionLen  = 2000
@@ -138,15 +139,42 @@ func (s *Server) postUserListing(w http.ResponseWriter, r *http.Request, user *m
 	if err != nil {
 		return err
 	}
+	if !verified && !user.IsAdmin && n >= maxNewPosterPerDay {
+		approved, err := store.CountApprovedByOwner(ctx, ex, user.ID)
+		if err != nil {
+			return err
+		}
+		if approved == 0 {
+			return httpErr(http.StatusTooManyRequests, "New posters can add 2 homes a day. Get verified, or wait for your first home to be approved, to post more")
+		}
+	}
+	// The same home posted twice: yours is blocked, someone else's is held for an admin to compare.
+	dupID, dupOwner, err := store.FindDuplicateListing(ctx, ex, in.Address, *in.Latitude, *in.Longitude, in.PricePer)
+	if err != nil {
+		return err
+	}
+	if dupID != 0 && dupOwner == user.ID {
+		return httpErr(http.StatusConflict, "You've already posted this home. Edit that listing instead.")
+	}
+	// Verified landlords and admins go live straight away; everyone else waits for review.
+	status := model.ListingPending
+	if dupID == 0 && (verified || user.IsAdmin) {
+		status = model.ListingApproved
+	}
 	created, err := store.CreateListing(ctx, ex, &model.Listing{
 		Title: in.Title, Type: in.Type, PricePer: in.PricePer, Total: total, UtilitiesMonthly: in.UtilitiesMonthly,
 		Deposit: in.Deposit, Walk: s.walkMinutes(ctx, user, *in.Latitude, *in.Longitude),
 		Latitude: in.Latitude, Longitude: in.Longitude, Grad: "from-coral to-sunshine", Emoji: "🏠",
-		Amenities: in.Amenities, LandlordName: publicName(user), LandlordVerified: verified, OwnerID: &owner, Status: model.ListingPending,
+		Amenities: in.Amenities, LandlordName: publicName(user), LandlordVerified: verified, OwnerID: &owner, Status: status,
 		Description: in.Description, Address: in.Address,
 	})
 	if err != nil {
 		return err
+	}
+	if dupID != 0 {
+		if err := store.FlagDuplicate(ctx, ex, created.ID, dupID); err != nil {
+			s.log.Warn("could not flag duplicate", "err", err)
+		}
 	}
 	writeJSON(w, http.StatusCreated, created)
 	return nil
@@ -187,6 +215,13 @@ func (s *Server) updateListing(w http.ResponseWriter, r *http.Request) error {
 	if err := in.clean(); err != nil {
 		return err
 	}
+	moved := l.Address != in.Address || l.Latitude == nil || l.Longitude == nil || *l.Latitude != *in.Latitude || *l.Longitude != *in.Longitude
+	if moved && !user.IsAdmin && l.Verified {
+		if err := store.SetListingVerified(r.Context(), s.DB.Executor, l.ID, false); err != nil {
+			return err
+		}
+		l.Verified = false // it must be checked again at the new place
+	}
 	l.Title, l.Type, l.PricePer, l.UtilitiesMonthly, l.Deposit = in.Title, in.Type, in.PricePer, in.UtilitiesMonthly, in.Deposit
 	l.Total = in.PricePer
 	if in.Total != nil {
@@ -195,7 +230,13 @@ func (s *Server) updateListing(w http.ResponseWriter, r *http.Request) error {
 	l.Latitude, l.Longitude, l.Address, l.Description, l.Amenities = in.Latitude, in.Longitude, in.Address, in.Description, in.Amenities
 	l.Walk = s.walkMinutes(r.Context(), user, *in.Latitude, *in.Longitude)
 	if !user.IsAdmin {
-		l.Status, l.ReviewNote = model.ListingPending, nil
+		stay, err := s.staysLive(r.Context(), user, l)
+		if err != nil {
+			return err
+		}
+		if !stay {
+			l.Status, l.ReviewNote = model.ListingPending, nil
+		}
 	}
 	if err := store.UpdateListingDetails(r.Context(), s.DB.Executor, l); err != nil {
 		return err
@@ -240,7 +281,26 @@ func (s *Server) adminListListings(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, out)
+	ids := make([]int, len(out))
+	for i := range out {
+		ids[i] = out[i].ID
+	}
+	flags, err := store.DuplicateFlags(r.Context(), s.DB.Executor, ids)
+	if err != nil {
+		return err
+	}
+	type adminListing struct {
+		model.Listing
+		DuplicateOf *int `json:"duplicate_of"`
+	}
+	res := make([]adminListing, len(out))
+	for i, l := range out {
+		res[i] = adminListing{Listing: l}
+		if d, ok := flags[l.ID]; ok {
+			res[i].DuplicateOf = &d
+		}
+	}
+	writeJSON(w, http.StatusOK, res)
 	return nil
 }
 
@@ -324,5 +384,59 @@ func (s *Server) repend(ctx context.Context, user *model.User, l *model.Listing)
 	if user.IsAdmin || l.Status == model.ListingPending || l.Status == model.ListingRemoved {
 		return nil
 	}
+	if stay, err := s.staysLive(ctx, user, l); err != nil || stay {
+		return err
+	}
 	return store.SetListingStatus(ctx, s.DB.Executor, l.ID, model.ListingPending, nil)
+}
+
+// staysLive: a verified landlord's edit to an already-live listing doesn't send it back for review.
+func (s *Server) staysLive(ctx context.Context, user *model.User, l *model.Listing) (bool, error) {
+	if l.Status != model.ListingApproved {
+		return false, nil
+	}
+	return store.IsLandlordVerified(ctx, s.DB.Executor, user.ID)
+}
+
+// setListingVerified: PATCH /listings/{id}/verified {"verified": true|false}.
+func (s *Server) setListingVerified(w http.ResponseWriter, r *http.Request) error {
+	user, err := s.currentUser(r)
+	if err != nil {
+		return err
+	}
+	if ok, err := s.canVerify(r, user); err != nil {
+		return err
+	} else if !ok {
+		return httpErr(http.StatusForbidden, "Only verifiers can do this")
+	}
+	id, err := pathInt(r, "listing_id")
+	if err != nil {
+		return err
+	}
+	p := struct {
+		Verified bool `json:"verified"`
+	}{}
+	if err := bindJSON(r, &p); err != nil {
+		return err
+	}
+	ctx, ex := r.Context(), s.DB.Executor
+	l, err := store.ListingByID(ctx, ex, id)
+	if err != nil {
+		return err
+	}
+	if l == nil {
+		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	if l.OwnerID != nil && *l.OwnerID == user.ID {
+		return httpErr(http.StatusForbidden, "You can't verify your own listing")
+	}
+	if err := store.SetListingVerified(ctx, ex, id, p.Verified); err != nil {
+		return err
+	}
+	if p.Verified && !l.Verified { // count it for the verifier's track record (admins aren't tracked)
+		if err := store.CreditVerifier(ctx, ex, user.ID); err != nil {
+			s.log.Warn("could not credit verifier", "err", err)
+		}
+	}
+	return s.respondListing(w, r, id)
 }

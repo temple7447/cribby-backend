@@ -272,6 +272,29 @@ var goMigrations = []struct {
 			CONSTRAINT uq_reviews_listing_user UNIQUE (listing_id, user_id))`,
 		`CREATE INDEX ix_reviews_listing ON reviews (listing_id, created_at)`,
 	}},
+	// A listing that looks like a copy of someone else's is held for an admin, with a pointer to the original.
+	{"011_listing_flags", []string{
+		`CREATE TABLE listing_flags (
+			listing_id INTEGER NOT NULL PRIMARY KEY REFERENCES listings (id),
+			duplicate_of INTEGER NOT NULL, created_at {TS} NOT NULL)`,
+	}},
+	// People trusted to check homes in person (cousins, campus ambassadors). An admin adds them.
+	{"012_verifiers", []string{
+		`CREATE TABLE verifiers (
+			user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users (id),
+			kind VARCHAR(20) NOT NULL, campus VARCHAR(120) NOT NULL DEFAULT '',
+			verified_count INTEGER NOT NULL DEFAULT 0, created_at {TS} NOT NULL)`,
+	}},
+	// What the person who filmed or visited a home found: its condition, water and power, whether the
+	// landlord agreed to it being posted, and the landlord's number (private; used to catch reposts).
+	{"013_listing_checklists", []string{
+		`CREATE TABLE listing_checklists (
+			listing_id INTEGER NOT NULL PRIMARY KEY REFERENCES listings (id),
+			condition VARCHAR(20) NOT NULL DEFAULT '', water VARCHAR(20) NOT NULL DEFAULT '',
+			power VARCHAR(20) NOT NULL DEFAULT '', permission BOOLEAN NOT NULL DEFAULT false,
+			contact_phone VARCHAR(30) NOT NULL DEFAULT '', updated_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_listing_checklists_phone ON listing_checklists (contact_phone)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,
