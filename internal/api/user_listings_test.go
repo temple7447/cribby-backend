@@ -452,3 +452,57 @@ func TestVerifierTiersFollowHomesChecked(t *testing.T) {
 		t.Fatalf("plain user: %v", me)
 	}
 }
+
+func TestBoostedListingsRankFirstUntilTheyExpire(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.signup("owner@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+	first := id(e.expect(201, "POST", "/listings", owner, apartment("Plain flat")).(obj))
+	second := id(e.expect(201, "POST", "/listings", owner, apartment("Paid flat")).(obj))
+	e.exec(`UPDATE listings SET status = 'approved'`)
+
+	names := func(q string) []string {
+		var out []string
+		for _, x := range list(e.expect(200, "GET", "/listings"+q, "", nil)) {
+			out = append(out, x.(obj)["title"].(string))
+		}
+		return out
+	}
+	if got := names(""); got[0] != "Plain flat" {
+		t.Fatalf("by default the older listing is first: %v", got)
+	}
+
+	e.expect(401, "PUT", path("/admin/listings/%d/boost", second), "", obj{"days": 30})
+	e.expect(403, "PUT", path("/admin/listings/%d/boost", second), owner, obj{"days": 30}) // you can't give yourself the spot
+	e.expect(422, "PUT", path("/admin/listings/%d/boost", second), admin, obj{"days": 999})
+	e.expect(404, "PUT", path("/admin/listings/%d/boost", 99999), admin, obj{"days": 30})
+	got := e.expect(200, "PUT", path("/admin/listings/%d/boost", second), admin, obj{"days": 30}).(obj)
+	if got["boosted"] != true {
+		t.Fatalf("boosted: %v", got)
+	}
+	if n := names(""); n[0] != "Paid flat" {
+		t.Fatalf("boosted listing should rank first: %v", n)
+	}
+	if n := names("?near_lat=6.5&near_lng=3.4"); n[0] != "Paid flat" {
+		t.Fatalf("boosted listing should rank first near a point too: %v", n)
+	}
+	if one := e.expect(200, "GET", path("/listings/%d", second), "", nil).(obj); one["boosted"] != true {
+		t.Fatalf("detail: %v", one)
+	}
+	if one := e.expect(200, "GET", path("/listings/%d", first), "", nil).(obj); one["boosted"] != false {
+		t.Fatalf("unboosted: %v", one)
+	}
+
+	// it runs out on its own
+	e.exec(`UPDATE listing_boosts SET boosted_until = ? WHERE listing_id = ?`, past(), second)
+	if n := names(""); n[0] != "Plain flat" {
+		t.Fatalf("an expired boost must stop ranking first: %v", n)
+	}
+	// and can be ended early
+	e.expect(200, "PUT", path("/admin/listings/%d/boost", second), admin, obj{"days": 7})
+	e.expect(200, "PUT", path("/admin/listings/%d/boost", second), admin, obj{"days": 0})
+	if one := e.expect(200, "GET", path("/listings/%d", second), "", nil).(obj); one["boosted"] != false {
+		t.Fatalf("ended: %v", one)
+	}
+}

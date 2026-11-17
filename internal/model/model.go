@@ -76,6 +76,7 @@ type Listing struct {
 	VideoURL             *string             `json:"video_url"`   // a playable (MP4) walkthrough the poster uploaded, if any
 	VideoPublicID        *string             `json:"-"`
 	Checklist            *Checklist          `json:"checklist,omitempty"` // only on a single listing, not in lists
+	Boosted              bool                `json:"boosted"`             // a paid featured spot is running
 }
 
 // Listing statuses. Only approved listings are public.
@@ -388,3 +389,54 @@ type ScamAlert struct {
 	CreatedAt    db.Time  `json:"created_at"`
 	ReviewedAt   *db.Time `json:"reviewed_at"`
 }
+
+// MarketItem is something a student is selling or giving away. ContactPhone is only returned to signed-in people.
+type MarketItem struct {
+	ID           int                `json:"id"`
+	UserID       int                `json:"-"`
+	Seller       string             `json:"seller"` // first name only
+	Title        string             `json:"title"`
+	Description  string             `json:"description"`
+	Category     string             `json:"category"`
+	Condition    string             `json:"condition"` // new | good | fair
+	Price        int                `json:"price"`     // naira; 0 = free
+	Latitude     *float64           `json:"latitude"`
+	Longitude    *float64           `json:"longitude"`
+	DistanceKM   *float64           `json:"distance_km"` // only set on proximity searches
+	Area         string             `json:"area"`
+	ContactPhone string             `json:"contact_phone,omitempty"`
+	LeavingSoon  bool               `json:"leaving_soon"` // sold by someone leaving: a room may be about to open up
+	Photos       db.JSONList[Photo] `json:"photos"`
+	Status       string             `json:"status"` // active | sold | reported | removed
+	Mine         bool               `json:"mine"`
+	CreatedAt    db.Time            `json:"created_at"`
+	UpdatedAt    db.Time            `json:"updated_at"`
+}
+
+func (m *MarketItem) Coords() (*float64, *float64) { return m.Latitude, m.Longitude }
+func (m *MarketItem) SetDistance(km float64)       { m.DistanceKM = &km }
+func (m *MarketItem) Distance() float64            { return *m.DistanceKM }
+
+// Vendor is a business near campus. Featured vendors (featured_until in the future) rank first.
+type Vendor struct {
+	ID            int      `json:"id"`
+	OwnerID       *int     `json:"-"`
+	Name          string   `json:"name"`
+	Category      string   `json:"category"`
+	Description   string   `json:"description"`
+	Phone         string   `json:"phone"`
+	Address       string   `json:"address"`
+	Latitude      float64  `json:"latitude"`
+	Longitude     float64  `json:"longitude"`
+	DistanceKM    *float64 `json:"distance_km"`
+	StudentRun    bool     `json:"student_run"`
+	Status        string   `json:"status"` // pending | approved | rejected | removed
+	ReviewNote    string   `json:"review_note"`
+	Featured      bool     `json:"featured"` // computed: featured_until is in the future
+	FeaturedUntil *db.Time `json:"featured_until"`
+	CreatedAt     db.Time  `json:"created_at"`
+}
+
+func (v *Vendor) Coords() (*float64, *float64) { return &v.Latitude, &v.Longitude }
+func (v *Vendor) SetDistance(km float64)       { v.DistanceKM = &km }
+func (v *Vendor) Distance() float64            { return *v.DistanceKM }

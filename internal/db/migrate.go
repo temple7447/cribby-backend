@@ -334,6 +334,45 @@ var goMigrations = []struct {
 		`ALTER TABLE reviews ADD COLUMN power INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE reviews ADD COLUMN landlord INTEGER NOT NULL DEFAULT 0`,
 	}},
+	// Student marketplace: used mattresses, fans, fridges and so on. Items go live at once; reports hide them.
+	{"018_market_items", []string{
+		`CREATE TABLE market_items (
+			id {PK}, user_id INTEGER NOT NULL REFERENCES users (id),
+			title VARCHAR(120) NOT NULL, description TEXT NOT NULL DEFAULT '', category VARCHAR(20) NOT NULL,
+			condition VARCHAR(10) NOT NULL, price INTEGER NOT NULL DEFAULT 0,
+			latitude FLOAT, longitude FLOAT, area VARCHAR(120) NOT NULL DEFAULT '',
+			contact_phone VARCHAR(30) NOT NULL, leaving_soon BOOLEAN NOT NULL DEFAULT false,
+			photos JSON NOT NULL, status VARCHAR(10) NOT NULL DEFAULT 'active',
+			created_at {TS} NOT NULL, updated_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_market_items_status ON market_items (status, category, created_at)`,
+		`CREATE INDEX ix_market_items_user ON market_items (user_id, created_at)`,
+	}},
+	// Vendors: businesses near campus (laundry, food, internet, printing, braiding, snacks...). Anyone can submit
+	// one; an admin approves it. featured_until puts a paid vendor at the top of nearby results.
+	{"019_vendors", []string{
+		`CREATE TABLE vendors (
+			id {PK}, owner_id INTEGER REFERENCES users (id), name VARCHAR(120) NOT NULL, category VARCHAR(20) NOT NULL,
+			description VARCHAR(500) NOT NULL DEFAULT '', phone VARCHAR(30) NOT NULL DEFAULT '',
+			address VARCHAR(200) NOT NULL DEFAULT '', latitude FLOAT NOT NULL, longitude FLOAT NOT NULL,
+			student_run BOOLEAN NOT NULL DEFAULT false, status VARCHAR(10) NOT NULL DEFAULT 'pending',
+			review_note VARCHAR(500) NOT NULL DEFAULT '', featured_until {TS},
+			created_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_vendors_status ON vendors (status, category)`,
+		`CREATE INDEX ix_vendors_owner ON vendors (owner_id, created_at)`,
+	}},
+	// What people search for around campus, so vendors can be shown real demand. Locations are rounded to ~1 km.
+	{"020_search_events", []string{
+		`CREATE TABLE search_events (
+			id {PK}, kind VARCHAR(10) NOT NULL, label VARCHAR(80) NOT NULL, school_id INTEGER,
+			lat FLOAT NOT NULL, lng FLOAT NOT NULL, created_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_search_events_time ON search_events (created_at)`,
+	}},
+	// Boosted listings: a landlord pays (by transfer, for now) and an admin sets how many days the listing ranks first.
+	{"021_listing_boosts", []string{
+		`CREATE TABLE listing_boosts (
+			listing_id INTEGER NOT NULL PRIMARY KEY REFERENCES listings (id),
+			boosted_until {TS} NOT NULL, created_at {TS} NOT NULL)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

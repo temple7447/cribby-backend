@@ -17,6 +17,11 @@ func (s *Server) attachChecklist(r *http.Request, l *model.Listing) error {
 	if l == nil {
 		return nil
 	}
+	if b, err := store.ActiveBoosts(r.Context(), s.DB.Executor, []int{l.ID}); err != nil {
+		return err
+	} else {
+		l.Boosted = b[l.ID]
+	}
 	c, err := store.ChecklistFor(r.Context(), s.DB.Executor, l.ID)
 	if err != nil || c == nil {
 		return err

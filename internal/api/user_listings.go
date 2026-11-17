@@ -440,3 +440,41 @@ func (s *Server) setListingVerified(w http.ResponseWriter, r *http.Request) erro
 	}
 	return s.respondListing(w, r, id)
 }
+
+// adminBoostListing: PUT /admin/listings/{id}/boost {"days": 30} makes it a featured spot (ranks first) for that
+// long. 0 ends it. The fee is collected outside the app for now; this just records the spot.
+func (s *Server) adminBoostListing(w http.ResponseWriter, r *http.Request) error {
+	if _, err := s.currentAdmin(r); err != nil {
+		return err
+	}
+	id, err := pathInt(r, "listing_id")
+	if err != nil {
+		return err
+	}
+	p := struct {
+		Days int `json:"days"`
+	}{}
+	if err := bindJSON(r, &p); err != nil {
+		return err
+	}
+	if p.Days < 0 || p.Days > 365 {
+		return httpErr(http.StatusUnprocessableEntity, "Days must be 0 to 365")
+	}
+	ctx, ex := r.Context(), s.DB.Executor
+	l, err := store.ListingByID(ctx, ex, id)
+	if err != nil {
+		return err
+	}
+	if l == nil {
+		return httpErr(http.StatusNotFound, "Listing not found")
+	}
+	var until *db.Time
+	if p.Days > 0 {
+		t := db.Time{Time: time.Now().UTC().Add(time.Duration(p.Days) * 24 * time.Hour)}
+		until = &t
+	}
+	if err := store.SetListingBoost(ctx, ex, id, until); err != nil {
+		return err
+	}
+	return s.respondListing(w, r, id)
+}

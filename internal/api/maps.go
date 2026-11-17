@@ -217,6 +217,11 @@ func (s *Server) mapsNearby(w http.ResponseWriter, r *http.Request) error {
 	if limit < 1 || limit > 20 {
 		limit = 15
 	}
+	if len(types) > 0 {
+		s.logSearch(r, "nearby", strings.Join(types, ","), origin.lat, origin.lng)
+	} else {
+		s.logSearch(r, "nearby", "everyday places", origin.lat, origin.lng)
+	}
 
 	if s.maps.Configured() {
 		if err := s.mapsAllowed(caller); err != nil {
@@ -273,6 +278,7 @@ func (s *Server) mapsSearch(w http.ResponseWriter, r *http.Request) error {
 	if limit < 1 || limit > 20 {
 		limit = 15
 	}
+	s.logSearch(r, "search", text, origin.lat, origin.lng)
 
 	if s.maps.Configured() {
 		if err := s.mapsAllowed(caller); err != nil {

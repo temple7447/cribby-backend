@@ -305,7 +305,7 @@ func (s *Server) deleteBlock(w http.ResponseWriter, r *http.Request) error {
 // ---- reports ----
 
 var (
-	reportTargetTypes = map[string]bool{"listing": true, "roommate_profile": true, "user": true}
+	reportTargetTypes = map[string]bool{"listing": true, "roommate_profile": true, "user": true, "market_item": true}
 	reportReasons     = map[string]bool{"spam": true, "scam": true, "inappropriate": true, "fake": true, "other": true}
 	reportStatuses    = map[string]bool{"pending": true, "reviewing": true, "resolved": true, "dismissed": true}
 )
@@ -358,6 +358,15 @@ func (s *Server) createReport(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		found = t != nil
+	case "market_item":
+		t, err := store.MarketItemByID(ctx, ex, p.TargetID)
+		if err != nil {
+			return err
+		}
+		found = t != nil && t.Status != "removed"
+		if found && t.UserID == user.ID {
+			return httpErr(http.StatusBadRequest, "You can't report your own item")
+		}
 	default: // "user"
 		if p.TargetID == user.ID {
 			return httpErr(http.StatusBadRequest, "You can't report yourself")
@@ -392,6 +401,14 @@ func (s *Server) createReport(w http.ResponseWriter, r *http.Request) error {
 			return err
 		} else if t != nil && !t.IsHidden {
 			if err := store.SetListingHidden(ctx, ex, t.ID, true); err != nil {
+				return err
+			}
+		}
+	case "market_item":
+		if t, err := store.MarketItemByID(ctx, ex, p.TargetID); err != nil {
+			return err
+		} else if t != nil && t.Status == "active" {
+			if err := store.SetMarketStatus(ctx, ex, t.ID, "reported"); err != nil {
 				return err
 			}
 		}
@@ -515,6 +532,17 @@ func (s *Server) applyReportOutcome(ctx context.Context, tx db.Executor, report 
 		}
 		if status == "resolved" {
 			return store.SetListingHidden(ctx, tx, listing.ID, true)
+		}
+	case "market_item":
+		item, err := store.MarketItemByID(ctx, tx, report.TargetID)
+		if err != nil || item == nil {
+			return err
+		}
+		if status == "dismissed" && item.Status == "reported" {
+			return store.SetMarketStatus(ctx, tx, item.ID, "active")
+		}
+		if status == "resolved" {
+			return store.SetMarketStatus(ctx, tx, item.ID, "removed")
 		}
 	}
 	return nil

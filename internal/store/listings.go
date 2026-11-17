@@ -57,7 +57,7 @@ func SearchListings(ctx context.Context, ex db.Executor, f ListingSearch) ([]*mo
 		listings[i] = &rows[i]
 	}
 	if f.NearLat == nil || f.NearLng == nil {
-		return listings, nil
+		return listings, StampBoosts(ctx, ex, listings)
 	}
 	// Proximity mode: nearest-first with distance_km stamped, and anything past radius_km dropped
 	// if one is given. Listings that have no pin can't be ranked, but they're still homes a
@@ -71,7 +71,7 @@ func SearchListings(ctx context.Context, ex db.Executor, f ListingSearch) ([]*mo
 			}
 		}
 	}
-	return ranked, nil
+	return ranked, StampBoosts(ctx, ex, ranked)
 }
 
 // ListingsByOwner returns everything a user has posted, newest first, whatever its status.

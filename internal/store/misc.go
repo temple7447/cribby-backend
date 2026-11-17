@@ -158,6 +158,12 @@ func EnrichReport(ctx context.Context, ex db.Executor, r model.Report) (model.Re
 		} else if t != nil {
 			r.TargetLabel = &t.Name
 		}
+	case "market_item":
+		if t, err := MarketItemByID(ctx, ex, r.TargetID); err != nil {
+			return r, err
+		} else if t != nil {
+			r.TargetLabel = &t.Title
+		}
 	default: // "user"
 		if t, err := UserByID(ctx, ex, r.TargetID); err != nil {
 			return r, err
