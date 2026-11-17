@@ -48,3 +48,29 @@ func FindListingByPhoneOfOtherOwner(ctx context.Context, ex db.Executor, phone s
 	}
 	return id, nil
 }
+
+// ChecklistsForListings returns the visit findings for the given listings (never the landlord's phone), keyed by listing id.
+func ChecklistsForListings(ctx context.Context, ex db.Executor, ids []int) (map[int]model.Checklist, error) {
+	out := map[int]model.Checklist{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := ex.Query(ctx, `SELECT listing_id, condition, water, power, permission FROM listing_checklists WHERE listing_id IN (`+placeholders(len(ids))+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var c model.Checklist
+		if err := rows.Scan(&id, &c.Condition, &c.Water, &c.Power, &c.Permission); err != nil {
+			return nil, err
+		}
+		out[id] = c
+	}
+	return out, rows.Err()
+}

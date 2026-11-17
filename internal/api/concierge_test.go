@@ -217,3 +217,30 @@ func TestConciergeWorksWithoutASchool(t *testing.T) {
 		t.Fatalf("prompt should note the missing school: %s", sys)
 	}
 }
+
+func TestConciergeKnowsVisitNotesAndVerificationButNeverThePrivatePhone(t *testing.T) {
+	e, token, near, far := conciergeFixture(t)
+	e.exec(`INSERT INTO listing_checklists (listing_id, condition, water, power, permission, contact_phone, updated_at) VALUES (?, 'good', 'borehole', 'most_of_day', ?, '08031234567', ?)`, near, true, past())
+	e.exec(`UPDATE listings SET verified = ?, landlord_verified = ? WHERE id = ?`, true, false, near)
+	e.exec(`UPDATE listings SET verified = ?, landlord_verified = ? WHERE id = ?`, false, false, far)
+	chat(e, token, "Which place has a borehole?")
+	sys := e.ai.messages()[0]["content"].(string)
+	for _, want := range []string{"visit notes: borehole water, light most of the day, rooms in good condition", "has not been checked", "reported, not guaranteed", "Do not favour a home"} {
+		if !strings.Contains(sys, want) {
+			t.Errorf("system prompt lacks %q", want)
+		}
+	}
+	if strings.Contains(sys, "08031234567") {
+		t.Error("the landlord's private phone must never reach the AI")
+	}
+	// the home nobody visited has no notes, so the assistant has nothing to claim about its water
+	line := ""
+	for _, l := range strings.Split(sys, "\n") {
+		if strings.Contains(l, "Faraway Flat") && strings.Contains(l, " | ") {
+			line = l
+		}
+	}
+	if line == "" || strings.Contains(line, "visit notes") || strings.Contains(line, "verified") {
+		t.Errorf("an unvisited, unverified home should carry no notes or badges: %q", line)
+	}
+}
