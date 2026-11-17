@@ -20,7 +20,8 @@ var slugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 var reservedSlugs = map[string]bool{
 	"listings": true, "login": true, "signup": true, "dashboard": true, "list-your-property": true,
 	"forgot-password": true, "privacy": true, "support": true, "delete-account": true, "admin": true,
-	"api": true, "c": true, "app": true, "terms": true, "fresher": true, "freshers": true, "scams": true,
+	"api": true, "c": true, "app": true, "terms": true, "fresher": true, "freshers": true, "scams": true, "market": true, "marketplace": true, "vendors": true,
+	"referrals": true,
 }
 
 const campusHomesRadiusKM = 5.0
