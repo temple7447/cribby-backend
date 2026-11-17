@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"strings"
+	"unicode"
 
 	"campus-backend/internal/db"
 	"campus-backend/internal/geo"
@@ -29,6 +30,13 @@ type ListingSearch struct {
 	RoomType, Q       string
 	NearLat, NearLng  *float64
 	RadiusKM          *float64
+
+	// Advanced filters. Water and Power need the visit checklist, so homes without one don't match them.
+	Amenities            []string // every one must be among the listing's amenities (matched by words, ignoring emoji)
+	VerifiedOnly         bool     // Cribby has checked the home
+	VerifiedLandlordOnly bool     // the landlord's ID was approved
+	Water                string   // tap | borehole | well | running (tap or borehole)
+	Power                string   // always | most (always, or most of the day)
 }
 
 // SearchListings is the public search: only approved, unhidden listings.
@@ -47,10 +55,37 @@ func SearchListings(ctx context.Context, ex db.Executor, f ListingSearch) ([]*mo
 	if f.Q != "" {
 		where, args = append(where, "("+ilike("title")+" OR "+ilike("address")+")"), append(args, contains(f.Q), contains(f.Q))
 	}
+	if f.VerifiedOnly {
+		where, args = append(where, "verified = ?"), append(args, true)
+	}
+	if f.VerifiedLandlordOnly {
+		where, args = append(where, "landlord_verified = ?"), append(args, true)
+	}
+	if vals := waterValues(f.Water); len(vals) > 0 {
+		where = append(where, "id IN (SELECT listing_id FROM listing_checklists WHERE water IN ("+placeholders(len(vals))+"))")
+		for _, v := range vals {
+			args = append(args, v)
+		}
+	}
+	if vals := powerValues(f.Power); len(vals) > 0 {
+		where = append(where, "id IN (SELECT listing_id FROM listing_checklists WHERE power IN ("+placeholders(len(vals))+"))")
+		for _, v := range vals {
+			args = append(args, v)
+		}
+	}
 	rows, err := queryList(ctx, ex, scanListing,
 		`SELECT `+listingCols+` FROM listings WHERE `+strings.Join(where, " AND ")+` ORDER BY id`, args...)
 	if err != nil {
 		return nil, err
+	}
+	if needles := amenityNeedles(f.Amenities); len(needles) > 0 {
+		kept := rows[:0]
+		for _, l := range rows {
+			if hasAllAmenities(l.Amenities, needles) {
+				kept = append(kept, l)
+			}
+		}
+		rows = kept
 	}
 	listings := make([]*model.Listing, len(rows))
 	for i := range rows {
@@ -154,4 +189,62 @@ func SetListingHidden(ctx context.Context, ex db.Executor, id int, hidden bool) 
 func SetListingCoords(ctx context.Context, ex db.Executor, id int, lat, lng float64) error {
 	_, err := ex.Exec(ctx, `UPDATE listings SET latitude = ?, longitude = ? WHERE id = ?`, lat, lng, id)
 	return err
+}
+
+func placeholders(n int) string { return strings.TrimSuffix(strings.Repeat("?,", n), ",") }
+
+func waterValues(w string) []string {
+	switch strings.ToLower(strings.TrimSpace(w)) {
+	case "tap", "borehole", "well":
+		return []string{strings.ToLower(strings.TrimSpace(w))}
+	case "running":
+		return []string{"tap", "borehole"}
+	}
+	return nil
+}
+
+func powerValues(p string) []string {
+	switch strings.ToLower(strings.TrimSpace(p)) {
+	case "always":
+		return []string{"always"}
+	case "most":
+		return []string{"always", "most_of_day"}
+	}
+	return nil
+}
+
+// amenityNeedles turns "🛡️ Security" into "security": the words, lower-cased, without a leading emoji.
+func amenityNeedles(in []string) []string {
+	var out []string
+	for _, a := range in {
+		if n := cleanAmenity(a); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+func cleanAmenity(a string) string {
+	r := []rune(strings.ToLower(strings.TrimSpace(a)))
+	i := 0
+	for i < len(r) && !(unicode.IsLetter(r[i]) || unicode.IsDigit(r[i])) {
+		i++
+	}
+	return strings.TrimSpace(string(r[i:]))
+}
+
+func hasAllAmenities(have []string, needles []string) bool {
+	for _, n := range needles {
+		found := false
+		for _, h := range have {
+			if strings.Contains(cleanAmenity(h), n) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

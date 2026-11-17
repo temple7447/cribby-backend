@@ -27,10 +27,26 @@ func (s *Server) listListings(w http.ResponseWriter, r *http.Request) error {
 		NearLat:  q.optFloat("near_lat"),
 		NearLng:  q.optFloat("near_lng"),
 		RadiusKM: q.optFloat("radius_km"),
+
+		Amenities:            r.URL.Query()["amenity"],
+		VerifiedOnly:         q.str("verified") == "1",
+		VerifiedLandlordOnly: q.str("landlord_verified") == "1",
+		Water:                q.str("water"),
+		Power:                q.str("power"),
 	}
 	schoolID := q.optInt("school_id")
 	if err := q.err(); err != nil {
 		return err
+	}
+	switch f.Water {
+	case "", "any", "tap", "borehole", "well", "running":
+	default:
+		return httpErr(http.StatusUnprocessableEntity, "water must be tap, borehole, well or running")
+	}
+	switch f.Power {
+	case "", "any", "always", "most":
+	default:
+		return httpErr(http.StatusUnprocessableEntity, "power must be always or most")
 	}
 	// ?school_id=N measures every listing against that school: results come back
 	// nearest-first with distance_km set (an explicit near_lat/near_lng wins).

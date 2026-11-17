@@ -509,3 +509,70 @@ func TestBoostedListingsRankFirstUntilTheyExpire(t *testing.T) {
 		t.Fatalf("ended: %v", one)
 	}
 }
+
+func TestAdvancedListingFilters(t *testing.T) {
+	e := newEnv(t)
+	owner, _ := e.signup("owner@gmail.com")
+	admin, adminUser := e.signup("boss@gmail.com")
+	e.makeAdmin(id(adminUser))
+
+	post := func(title string, amenities []string) int {
+		b := apartment(title)
+		b["amenities"] = amenities
+		return id(e.expect(201, "POST", "/listings", owner, b).(obj))
+	}
+	a := post("Borehole flat", []string{"🛡️ Security", "🪑 Furnished", "💧 Water"})
+	b := post("Tap flat", []string{"Security"})
+	e.exec(`UPDATE listings SET status = 'approved'`) // a first approved home lifts the new-poster limit
+	c := post("Bare flat", []string{"📶 Wi-Fi"})
+	_ = post("Unchecked flat", []string{"🛡️ Security", "🪑 Furnished"})
+	e.exec(`UPDATE listings SET status = 'approved'`)
+	e.expect(200, "PUT", path("/listings/%d/checklist", a), owner, obj{"water": "borehole", "power": "always"})
+	e.expect(200, "PUT", path("/listings/%d/checklist", b), owner, obj{"water": "tap", "power": "most_of_day"})
+	e.expect(200, "PUT", path("/listings/%d/checklist", c), owner, obj{"water": "none", "power": "few_hours"})
+	e.expect(200, "PATCH", path("/listings/%d/verified", a), admin, obj{"verified": true})
+	e.exec(`UPDATE listings SET landlord_verified = ? WHERE id = ?`, true, b)
+
+	titles := func(q string) []string {
+		var out []string
+		for _, x := range list(e.expect(200, "GET", "/listings"+q, "", nil)) {
+			out = append(out, x.(obj)["title"].(string))
+		}
+		return out
+	}
+	same := func(got []string, want ...string) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+		seen := map[string]bool{}
+		for _, g := range got {
+			seen[g] = true
+		}
+		for _, w := range want {
+			if !seen[w] {
+				t.Fatalf("got %v, want %v", got, want)
+			}
+		}
+	}
+
+	same(titles(""), "Borehole flat", "Tap flat", "Bare flat", "Unchecked flat")
+	// amenities match by words, ignore emoji and case, and every one asked for must be there
+	same(titles("?amenity=security"), "Borehole flat", "Tap flat", "Unchecked flat")
+	same(titles("?amenity=%F0%9F%9B%A1%EF%B8%8F%20Security&amenity=furnished"), "Borehole flat", "Unchecked flat")
+	same(titles("?amenity=wi-fi"), "Bare flat")
+	same(titles("?amenity=generator"))
+	// verified homes and verified landlords
+	same(titles("?verified=1"), "Borehole flat")
+	same(titles("?landlord_verified=1"), "Tap flat")
+	// water and light come from the visit checklist, so a home nobody visited can't match
+	same(titles("?water=borehole"), "Borehole flat")
+	same(titles("?water=running"), "Borehole flat", "Tap flat")
+	same(titles("?power=always"), "Borehole flat")
+	same(titles("?power=most"), "Borehole flat", "Tap flat")
+	same(titles("?water=any&power=any"), "Borehole flat", "Tap flat", "Bare flat", "Unchecked flat")
+	// filters combine
+	same(titles("?water=running&power=most&amenity=furnished"), "Borehole flat")
+	e.expect(422, "GET", "/listings?water=ocean", "", nil)
+	e.expect(422, "GET", "/listings?power=sometimes", "", nil)
+}

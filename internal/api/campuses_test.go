@@ -27,7 +27,7 @@ func TestCampusLandingPages(t *testing.T) {
 	e.expect(403, "PUT", "/admin/campuses/uniben", user, body)
 	e.expect(422, "PUT", "/admin/campuses/Login", admin, body) // a page name the website already uses
 	e.expect(422, "PUT", "/admin/campuses/market", admin, body)
-	e.expect(422, "PUT", "/admin/campuses/x", admin, body)     // too short
+	e.expect(422, "PUT", "/admin/campuses/x", admin, body) // too short
 	bad := obj{"school_id": sid, "whatsapp_url": "https://evil.example.com/x"}
 	e.expect(422, "PUT", "/admin/campuses/uniben", admin, bad) // only WhatsApp links
 	e.expect(404, "PUT", "/admin/campuses/uniben", admin, obj{"school_id": 999999})
