@@ -224,13 +224,16 @@ func amenityNeedles(in []string) []string {
 	return out
 }
 
+// cleanAmenity lower-cases an amenity and drops emoji and punctuation, so "🛡️ Security", "security",
+// "A/C" and "AC", and "Wi-Fi" and "WiFi", each match one another.
 func cleanAmenity(a string) string {
-	r := []rune(strings.ToLower(strings.TrimSpace(a)))
-	i := 0
-	for i < len(r) && !(unicode.IsLetter(r[i]) || unicode.IsDigit(r[i])) {
-		i++
+	var b strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(a)) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == ' ' {
+			b.WriteRune(r)
+		}
 	}
-	return strings.TrimSpace(string(r[i:]))
+	return strings.Join(strings.Fields(b.String()), " ")
 }
 
 func hasAllAmenities(have []string, needles []string) bool {

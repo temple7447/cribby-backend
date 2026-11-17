@@ -521,7 +521,7 @@ func TestAdvancedListingFilters(t *testing.T) {
 		b["amenities"] = amenities
 		return id(e.expect(201, "POST", "/listings", owner, b).(obj))
 	}
-	a := post("Borehole flat", []string{"🛡️ Security", "🪑 Furnished", "💧 Water"})
+	a := post("Borehole flat", []string{"🛡️ Security", "🪑 Furnished", "💧 Water", "❄️ A/C"})
 	b := post("Tap flat", []string{"Security"})
 	e.exec(`UPDATE listings SET status = 'approved'`) // a first approved home lifts the new-poster limit
 	c := post("Bare flat", []string{"📶 Wi-Fi"})
@@ -561,6 +561,8 @@ func TestAdvancedListingFilters(t *testing.T) {
 	same(titles("?amenity=security"), "Borehole flat", "Tap flat", "Unchecked flat")
 	same(titles("?amenity=%F0%9F%9B%A1%EF%B8%8F%20Security&amenity=furnished"), "Borehole flat", "Unchecked flat")
 	same(titles("?amenity=wi-fi"), "Bare flat")
+	same(titles("?amenity=wifi"), "Bare flat")                        // punctuation doesn't matter
+	same(titles("?amenity=%E2%9D%84%EF%B8%8F%20AC"), "Borehole flat") // "AC" finds a home that says "A/C"
 	same(titles("?amenity=generator"))
 	// verified homes and verified landlords
 	same(titles("?verified=1"), "Borehole flat")
