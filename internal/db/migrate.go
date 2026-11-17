@@ -413,6 +413,22 @@ var goMigrations = []struct {
 			bank_name VARCHAR(60) NOT NULL, account_number VARCHAR(10) NOT NULL, account_name VARCHAR(100) NOT NULL,
 			updated_at {TS} NOT NULL)`,
 	}},
+	{"025_deposits", []string{
+		`CREATE TABLE deposits (
+			id {PK}, booking_id INTEGER NOT NULL REFERENCES bookings (id), listing_id INTEGER NOT NULL REFERENCES listings (id),
+			tenant_id INTEGER NOT NULL REFERENCES users (id), landlord_id INTEGER NOT NULL REFERENCES users (id),
+			title VARCHAR(200) NOT NULL, amount INTEGER NOT NULL, fee INTEGER NOT NULL, landlord_amount INTEGER NOT NULL,
+			status VARCHAR(20) NOT NULL, reference VARCHAR(60) NOT NULL, payment_url TEXT NOT NULL DEFAULT '',
+			tenant_phone VARCHAR(30) NOT NULL DEFAULT '', move_in_date DATE NOT NULL,
+			dispute_reason VARCHAR(500) NOT NULL DEFAULT '', resolution_note VARCHAR(500) NOT NULL DEFAULT '',
+			payout_status VARCHAR(10) NOT NULL DEFAULT 'none', payout_reference VARCHAR(120) NOT NULL DEFAULT '',
+			created_at {TS} NOT NULL, updated_at {TS} NOT NULL, paid_at {TS}, auto_release_at {TS}, completed_at {TS},
+			CONSTRAINT uq_deposits_reference UNIQUE (reference))`,
+		`CREATE INDEX ix_deposits_tenant ON deposits (tenant_id, created_at)`,
+		`CREATE INDEX ix_deposits_landlord ON deposits (landlord_id, created_at)`,
+		`CREATE INDEX ix_deposits_booking ON deposits (booking_id, status)`,
+		`CREATE INDEX ix_deposits_status ON deposits (status, auto_release_at)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

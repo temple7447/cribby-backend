@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"campus-backend/internal/db"
 	"campus-backend/internal/model"
@@ -179,6 +180,11 @@ func (s *Server) cancelBooking(w http.ResponseWriter, r *http.Request) error {
 	}
 	if booking.Status == "rejected" || booking.Status == "canceled" {
 		return httpErr(http.StatusBadRequest, fmt.Sprintf("Booking is already %s", booking.Status))
+	}
+	if held, err := store.OpenDepositForBooking(ctx, ex, id, db.Time{Time: time.Now().UTC().Add(24 * time.Hour)}); err != nil {
+		return err
+	} else if held != nil {
+		return httpErr(http.StatusConflict, "A deposit is being held for this booking. Cancel the deposit first (or report a problem)")
 	}
 	if err := store.CancelBooking(ctx, ex, id); err != nil {
 		return err

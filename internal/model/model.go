@@ -501,3 +501,31 @@ type Vendor struct {
 func (v *Vendor) Coords() (*float64, *float64) { return &v.Latitude, &v.Longitude }
 func (v *Vendor) SetDistance(km float64)       { v.DistanceKM = &km }
 func (v *Vendor) Distance() float64            { return *v.DistanceKM }
+
+// Deposit is money a student paid to hold a home they were approved for. Cribby keeps it until the student
+// confirms the move-in (or a few days pass after the move-in date with no complaint), then queues it for the landlord.
+type Deposit struct {
+	ID              int      `json:"id"`
+	BookingID       int      `json:"booking_id"`
+	ListingID       int      `json:"listing_id"`
+	TenantID        int      `json:"-"`
+	LandlordID      int      `json:"-"`
+	Title           string   `json:"title"`
+	Amount          int      `json:"amount"`
+	Fee             int      `json:"fee"`
+	LandlordAmount  int      `json:"landlord_amount"`
+	Status          string   `json:"status"` // awaiting_payment | paid | completed | disputed | refunded | cancelled
+	Reference       string   `json:"-"`
+	PaymentURL      string   `json:"payment_url,omitempty"`
+	TenantPhone     string   `json:"tenant_phone,omitempty"`
+	MoveInDate      db.Date  `json:"move_in_date"`
+	DisputeReason   string   `json:"dispute_reason"`
+	ResolutionNote  string   `json:"resolution_note"`
+	PayoutStatus    string   `json:"payout_status"`
+	PayoutReference string   `json:"payout_reference,omitempty"`
+	CreatedAt       db.Time  `json:"created_at"`
+	UpdatedAt       db.Time  `json:"updated_at"`
+	PaidAt          *db.Time `json:"paid_at"`
+	AutoReleaseAt   *db.Time `json:"auto_release_at"`
+	CompletedAt     *db.Time `json:"completed_at"`
+}

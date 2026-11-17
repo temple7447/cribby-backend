@@ -458,6 +458,7 @@ func (s *Server) paystackWebhook(w http.ResponseWriter, r *http.Request) error {
 		}
 		switch {
 		case o == nil:
+			s.depositPaid(r.Context(), ev.Data.Reference, ev.Data.Amount)
 		case ev.Data.Amount != o.Amount*100:
 			s.log.Error("payment amount does not match the order", "order", o.ID, "paid", ev.Data.Amount, "expected", o.Amount*100)
 			s.event(r.Context(), o.ID, nil, "amount_mismatch", "")
@@ -469,11 +470,25 @@ func (s *Server) paystackWebhook(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// depositPaid handles a Paystack payment whose reference belongs to a booking deposit rather than an order.
+func (s *Server) depositPaid(ctx context.Context, reference string, amountKobo int) {
+	d, err := store.DepositByReference(ctx, s.DB.Executor, reference)
+	if err != nil || d == nil {
+		return
+	}
+	if amountKobo != d.Amount*100 {
+		s.log.Error("deposit amount does not match", "deposit", d.ID, "paid", amountKobo, "expected", d.Amount*100)
+		return
+	}
+	s.applyDepositPayment(ctx, d)
+}
+
 // ---- timers ----
 
 // SweepOrders does what time requires: release money nobody objected to, refund buyers whose seller never
 // handed the item over, and drop payments nobody finished.
 func (s *Server) SweepOrders(ctx context.Context, now time.Time) {
+	s.SweepDeposits(ctx, now)
 	ex := s.DB.Executor
 	due, err := store.OrdersDueForRelease(ctx, ex, db.Time{Time: now})
 	if err != nil {

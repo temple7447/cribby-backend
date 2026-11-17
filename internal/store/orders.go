@@ -66,6 +66,11 @@ func OpenOrderForItem(ctx context.Context, ex db.Executor, itemID int, freshAfte
 // transition moves an order from one of the `from` statuses to `to` in a single conditional update, so two
 // taps (or a tap and a timer) can never both succeed. It reports whether this call made the change.
 func transition(ctx context.Context, ex db.Executor, id int, from []string, to, extraSet string, extraArgs ...any) (bool, error) {
+	return transitionIn(ctx, ex, "orders", id, from, to, extraSet, extraArgs...)
+}
+
+// transitionIn is transition for any table that has id, status and updated_at (orders, deposits).
+func transitionIn(ctx context.Context, ex db.Executor, table string, id int, from []string, to, extraSet string, extraArgs ...any) (bool, error) {
 	marks := strings.TrimSuffix(strings.Repeat("?,", len(from)), ",")
 	set := "status = ?, updated_at = ?"
 	if extraSet != "" {
@@ -76,7 +81,7 @@ func transition(ctx context.Context, ex db.Executor, id int, from []string, to, 
 	for _, f := range from {
 		args = append(args, f)
 	}
-	res, err := ex.Exec(ctx, `UPDATE orders SET `+set+` WHERE id = ? AND status IN (`+marks+`)`, args...)
+	res, err := ex.Exec(ctx, `UPDATE `+table+` SET `+set+` WHERE id = ? AND status IN (`+marks+`)`, args...)
 	if err != nil {
 		return false, err
 	}
