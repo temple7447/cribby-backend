@@ -53,3 +53,13 @@ func UnverifiedLiveListings(ctx context.Context, ex db.Executor, excludeOwner, l
 		WHERE status = 'approved' AND verified = ? AND is_hidden = ? AND (owner_id IS NULL OR owner_id <> ?)
 		ORDER BY created_at ASC LIMIT ?`, false, false, excludeOwner, limit)
 }
+
+// VerifierFor returns the person's verifier record, or nil if they aren't one.
+func VerifierFor(ctx context.Context, ex db.Executor, userID int) (*model.Verifier, error) {
+	return queryOne(ctx, ex, func(s rowScanner) (model.Verifier, error) {
+		var v model.Verifier
+		err := s.Scan(&v.UserID, &v.Kind, &v.Campus, &v.VerifiedCount, &v.CreatedAt, &v.Email, &v.Name)
+		return v, err
+	}, `SELECT v.user_id, v.kind, v.campus, v.verified_count, v.created_at, u.email, u.name
+		FROM verifiers v JOIN users u ON u.id = v.user_id WHERE v.user_id = ?`, userID)
+}

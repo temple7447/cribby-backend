@@ -11,6 +11,20 @@ import (
 // Verifiers: trusted people (cousins, ambassadors) who visit homes and mark them "Verified".
 // An admin adds them; they can't verify their own listings.
 
+// verifierTier turns the number of homes someone has checked into a tier and what the next one needs.
+func verifierTier(n int) (tier string, next int) {
+	switch {
+	case n >= 40:
+		return "gold", 0
+	case n >= 15:
+		return "silver", 40
+	case n >= 5:
+		return "bronze", 15
+	default:
+		return "starter", 5
+	}
+}
+
 func (s *Server) canVerify(r *http.Request, user *model.User) (bool, error) {
 	if user.IsAdmin {
 		return true, nil
@@ -28,7 +42,16 @@ func (s *Server) verifierMe(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"is_verifier": ok})
+	out := map[string]any{"is_verifier": ok, "verified_count": 0, "tier": "", "next_tier_at": 0}
+	if ok {
+		if v, err := store.VerifierFor(r.Context(), s.DB.Executor, user.ID); err != nil {
+			return err
+		} else if v != nil {
+			out["verified_count"] = v.VerifiedCount
+			out["tier"], out["next_tier_at"] = verifierTier(v.VerifiedCount)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 	return nil
 }
 
@@ -60,6 +83,9 @@ func (s *Server) adminListVerifiers(w http.ResponseWriter, r *http.Request) erro
 	out, err := store.ListVerifiers(r.Context(), s.DB.Executor)
 	if err != nil {
 		return err
+	}
+	for i := range out {
+		out[i].Tier, out[i].NextTierAt = verifierTier(out[i].VerifiedCount)
 	}
 	writeJSON(w, http.StatusOK, out)
 	return nil

@@ -315,6 +315,25 @@ var goMigrations = []struct {
 			code VARCHAR(30) NOT NULL, created_at {TS} NOT NULL)`,
 		`CREATE INDEX ix_referrals_code ON referrals (code)`,
 	}},
+	// Public scam alerts: students report fake agents and landlords. An admin approves each one before it is
+	// public; the suspect's phone is kept in full but only shown masked.
+	{"016_scam_alerts", []string{
+		`CREATE TABLE scam_alerts (
+			id {PK}, user_id INTEGER NOT NULL REFERENCES users (id), kind VARCHAR(20) NOT NULL,
+			suspect_name VARCHAR(120) NOT NULL DEFAULT '', suspect_phone VARCHAR(30) NOT NULL DEFAULT '',
+			area VARCHAR(120) NOT NULL DEFAULT '', details TEXT NOT NULL,
+			status VARCHAR(10) NOT NULL DEFAULT 'pending', review_note VARCHAR(500) NOT NULL DEFAULT '',
+			created_at {TS} NOT NULL, reviewed_at {TS})`,
+		`CREATE INDEX ix_scam_alerts_status ON scam_alerts (status, created_at)`,
+		`CREATE INDEX ix_scam_alerts_phone ON scam_alerts (suspect_phone)`,
+		`CREATE INDEX ix_scam_alerts_user ON scam_alerts (user_id, created_at)`,
+	}},
+	// Reviews can also score the water, the power and the landlord separately (0 = not rated).
+	{"017_review_scores", []string{
+		`ALTER TABLE reviews ADD COLUMN water INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE reviews ADD COLUMN power INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE reviews ADD COLUMN landlord INTEGER NOT NULL DEFAULT 0`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

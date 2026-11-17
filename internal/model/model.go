@@ -119,27 +119,28 @@ type BookingAdmin struct {
 }
 
 type RoommateProfile struct {
-	ID             int                 `json:"id"`
-	UserID         int                 `json:"user_id"`
-	Name           string              `json:"name"`
-	Age            int                 `json:"age"`
-	School         string              `json:"school"`
-	Year           string              `json:"year"`
-	BudgetMin      int                 `json:"budget_min"`
-	BudgetMax      int                 `json:"budget_max"`
-	MoveInDate     string              `json:"move_in_date"`
-	Tags           db.JSONList[string] `json:"tags"`
-	Bio            string              `json:"bio"`
-	LookingFor     string              `json:"looking_for"`
-	PreferredAreas db.JSONList[string] `json:"preferred_areas"`
-	Verified       bool                `json:"verified"` // computed: owner's verification_status == "verified"
-	Visibility     string              `json:"visibility"`
-	Emoji          string              `json:"emoji"`
-	Grad           string              `json:"grad"`
-	BannerURL      *string             `json:"banner_url"`
-	BannerPublicID *string             `json:"-"`
-	UserAvatarURL  *string             `json:"user_avatar_url"` // computed from the owner
-	CreatedAt      db.Time             `json:"created_at"`
+	ID              int                 `json:"id"`
+	UserID          int                 `json:"user_id"`
+	Name            string              `json:"name"`
+	Age             int                 `json:"age"`
+	School          string              `json:"school"`
+	Year            string              `json:"year"`
+	BudgetMin       int                 `json:"budget_min"`
+	BudgetMax       int                 `json:"budget_max"`
+	MoveInDate      string              `json:"move_in_date"`
+	Tags            db.JSONList[string] `json:"tags"`
+	Bio             string              `json:"bio"`
+	LookingFor      string              `json:"looking_for"`
+	PreferredAreas  db.JSONList[string] `json:"preferred_areas"`
+	Verified        bool                `json:"verified"`         // computed: owner's verification_status == "verified"
+	StudentVerified bool                `json:"student_verified"` // computed: verified email at a university domain (.edu.ng, .edu)
+	Visibility      string              `json:"visibility"`
+	Emoji           string              `json:"emoji"`
+	Grad            string              `json:"grad"`
+	BannerURL       *string             `json:"banner_url"`
+	BannerPublicID  *string             `json:"-"`
+	UserAvatarURL   *string             `json:"user_avatar_url"` // computed from the owner
+	CreatedAt       db.Time             `json:"created_at"`
 }
 
 type Message struct {
@@ -315,6 +316,9 @@ type Review struct {
 	ListingID int     `json:"listing_id"`
 	UserID    int     `json:"-"`
 	Rating    int     `json:"rating"`
+	Water     int     `json:"water"`    // 0 = not rated
+	Power     int     `json:"power"`    // 0 = not rated
+	Landlord  int     `json:"landlord"` // 0 = not rated
 	Body      string  `json:"body"`
 	Reviewer  string  `json:"reviewer"`
 	Mine      bool    `json:"mine"`
@@ -327,6 +331,8 @@ type Verifier struct {
 	Kind          string  `json:"kind"` // cousin | ambassador
 	Campus        string  `json:"campus"`
 	VerifiedCount int     `json:"verified_count"`
+	Tier          string  `json:"tier"`         // starter | bronze | silver | gold, from verified_count
+	NextTierAt    int     `json:"next_tier_at"` // homes needed for the next tier; 0 at the top
 	CreatedAt     db.Time `json:"created_at"`
 	Email         string  `json:"email"`
 	Name          string  `json:"name"`
@@ -366,4 +372,19 @@ type ReferralCode struct {
 	Signups    int     `json:"signups"`
 	Requests   int     `json:"requests"` // booking requests by people who came through the code
 	Rentals    int     `json:"rentals"`  // of those, approved by the landlord
+}
+
+// ScamAlert is a report of a fake agent, landlord or listing. The phone is masked unless an admin asks.
+type ScamAlert struct {
+	ID           int      `json:"id"`
+	UserID       int      `json:"-"`
+	Kind         string   `json:"kind"` // fake_agent | fake_landlord | fake_listing | advance_fee | other
+	SuspectName  string   `json:"suspect_name"`
+	SuspectPhone string   `json:"suspect_phone"`
+	Area         string   `json:"area"`
+	Details      string   `json:"details"`
+	Status       string   `json:"status"` // pending | approved | rejected
+	ReviewNote   string   `json:"review_note"`
+	CreatedAt    db.Time  `json:"created_at"`
+	ReviewedAt   *db.Time `json:"reviewed_at"`
 }

@@ -46,8 +46,14 @@ func (s *Server) listReviews(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	avg, err := store.ReviewAveragesFor(r.Context(), s.DB.Executor, l.ID)
+	if err != nil {
+		return err
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"rating": l.Rating, "count": l.Reviews, "can_review": canReview, "items": items,
+		"water": avg.Water, "water_count": avg.WaterN, "power": avg.Power, "power_count": avg.PowerN,
+		"landlord": avg.Landlord, "landlord_count": avg.LandlordN,
 	})
 	return nil
 }
@@ -62,14 +68,22 @@ func (s *Server) saveReview(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	p := struct {
-		Rating int    `json:"rating"`
-		Body   string `json:"body"`
+		Rating   int    `json:"rating"`
+		Water    int    `json:"water"`    // optional 1-5, 0 = not rated
+		Power    int    `json:"power"`    // optional 1-5, 0 = not rated
+		Landlord int    `json:"landlord"` // optional 1-5, 0 = not rated
+		Body     string `json:"body"`
 	}{}
 	if err := bindJSON(r, &p); err != nil {
 		return err
 	}
 	if p.Rating < 1 || p.Rating > 5 {
 		return httpErr(http.StatusUnprocessableEntity, "Rating must be 1 to 5 stars")
+	}
+	for _, v := range []int{p.Water, p.Power, p.Landlord} {
+		if v < 0 || v > 5 {
+			return httpErr(http.StatusUnprocessableEntity, "Scores must be 1 to 5 stars")
+		}
 	}
 	body := strings.TrimSpace(p.Body)
 	if len([]rune(body)) > maxReviewBody {
@@ -86,7 +100,7 @@ func (s *Server) saveReview(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return httpErr(http.StatusForbidden, "Message the landlord or request this home before reviewing it")
 	}
-	if err := store.UpsertReview(ctx, ex, l.ID, user.ID, p.Rating, body); err != nil {
+	if err := store.UpsertReview(ctx, ex, l.ID, user.ID, p.Rating, p.Water, p.Power, p.Landlord, body); err != nil {
 		return err
 	}
 	return s.listReviews(w, r)

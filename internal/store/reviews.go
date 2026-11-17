@@ -31,7 +31,7 @@ func firstName(display, name string) string {
 
 // ListReviews returns a home's reviews, newest first. viewerID marks the viewer's own (0 for guests).
 func ListReviews(ctx context.Context, ex db.Executor, listingID, viewerID, limit int) ([]model.Review, error) {
-	rows, err := ex.Query(ctx, `SELECT r.id, r.listing_id, r.user_id, r.rating, r.body, r.created_at, u.display_name, u.name
+	rows, err := ex.Query(ctx, `SELECT r.id, r.listing_id, r.user_id, r.rating, r.water, r.power, r.landlord, r.body, r.created_at, u.display_name, u.name
 		FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.listing_id = ? ORDER BY r.created_at DESC LIMIT ?`, listingID, limit)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func ListReviews(ctx context.Context, ex db.Executor, listingID, viewerID, limit
 	for rows.Next() {
 		var r model.Review
 		var display, name *string
-		if err := rows.Scan(&r.ID, &r.ListingID, &r.UserID, &r.Rating, &r.Body, &r.CreatedAt, &display, &name); err != nil {
+		if err := rows.Scan(&r.ID, &r.ListingID, &r.UserID, &r.Rating, &r.Water, &r.Power, &r.Landlord, &r.Body, &r.CreatedAt, &display, &name); err != nil {
 			return nil, err
 		}
 		d, n := "", ""
@@ -58,16 +58,16 @@ func ListReviews(ctx context.Context, ex db.Executor, listingID, viewerID, limit
 }
 
 // UpsertReview adds or replaces the person's review and refreshes the listing's average.
-func UpsertReview(ctx context.Context, ex db.Executor, listingID, userID, rating int, body string) error {
+func UpsertReview(ctx context.Context, ex db.Executor, listingID, userID, rating, water, power, landlord int, body string) error {
 	now := db.Now()
-	res, err := ex.Exec(ctx, `UPDATE reviews SET rating = ?, body = ?, updated_at = ? WHERE listing_id = ? AND user_id = ?`,
-		rating, body, now, listingID, userID)
+	res, err := ex.Exec(ctx, `UPDATE reviews SET rating = ?, water = ?, power = ?, landlord = ?, body = ?, updated_at = ? WHERE listing_id = ? AND user_id = ?`,
+		rating, water, power, landlord, body, now, listingID, userID)
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		if _, err := ex.Exec(ctx, `INSERT INTO reviews (listing_id, user_id, rating, body, created_at, updated_at) VALUES (?,?,?,?,?,?)`,
-			listingID, userID, rating, body, now, now); err != nil {
+		if _, err := ex.Exec(ctx, `INSERT INTO reviews (listing_id, user_id, rating, water, power, landlord, body, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)`,
+			listingID, userID, rating, water, power, landlord, body, now, now); err != nil {
 			return err
 		}
 	}
@@ -100,4 +100,23 @@ func refreshRating(ctx context.Context, ex db.Executor, listingID int) error {
 	avg = float64(int(avg*10+0.5)) / 10
 	_, err := ex.Exec(ctx, `UPDATE listings SET rating = ?, reviews = ? WHERE id = ?`, avg, n, listingID)
 	return err
+}
+
+// ReviewAverages are the average water, power and landlord scores over the reviews that gave one.
+type ReviewAverages struct {
+	Water, Power, Landlord    float64
+	WaterN, PowerN, LandlordN int
+}
+
+func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
+
+func ReviewAveragesFor(ctx context.Context, ex db.Executor, listingID int) (ReviewAverages, error) {
+	var a ReviewAverages
+	err := ex.QueryRow(ctx, `SELECT
+		COALESCE(AVG(CASE WHEN water > 0 THEN water END), 0), COUNT(CASE WHEN water > 0 THEN 1 END),
+		COALESCE(AVG(CASE WHEN power > 0 THEN power END), 0), COUNT(CASE WHEN power > 0 THEN 1 END),
+		COALESCE(AVG(CASE WHEN landlord > 0 THEN landlord END), 0), COUNT(CASE WHEN landlord > 0 THEN 1 END)
+		FROM reviews WHERE listing_id = ?`, listingID).Scan(&a.Water, &a.WaterN, &a.Power, &a.PowerN, &a.Landlord, &a.LandlordN)
+	a.Water, a.Power, a.Landlord = round1(a.Water), round1(a.Power), round1(a.Landlord)
+	return a, err
 }

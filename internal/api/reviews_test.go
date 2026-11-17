@@ -77,3 +77,34 @@ func TestReviewsFlow(t *testing.T) {
 		t.Fatalf("all gone: %v", g)
 	}
 }
+
+func TestReviewsCanScoreWaterPowerAndLandlord(t *testing.T) {
+	e := newEnv(t)
+	listing := e.createListing()
+	a, _ := e.signup("a@gmail.com")
+	b, _ := e.signup("b@gmail.com")
+	e.expect(201, "POST", "/bookings", a, obj{"listing_id": listing, "move_in_date": "2026-12-01"})
+	e.expect(201, "POST", "/bookings", b, obj{"listing_id": listing, "move_in_date": "2026-12-01"})
+	url := path("/listings/%d/reviews", listing)
+
+	e.expect(422, "PUT", url, a, obj{"rating": 4, "water": 6})
+	e.expect(422, "PUT", url, a, obj{"rating": 4, "power": -1})
+	e.expect(200, "PUT", url, a, obj{"rating": 4, "water": 5, "power": 2, "landlord": 4})
+	got := e.expect(200, "PUT", url, b, obj{"rating": 3, "water": 4}).(obj) // only water scored
+	if got["water"].(float64) != 4.5 || num(got, "water_count") != 2 {
+		t.Fatalf("water: %v", got)
+	}
+	if got["power"].(float64) != 2 || num(got, "power_count") != 1 || got["landlord"].(float64) != 4 || num(got, "landlord_count") != 1 {
+		t.Fatalf("unrated scores must not drag the average down: %v", got)
+	}
+	// the overall rating is unaffected by the parts
+	if got["rating"].(float64) != 3.5 {
+		t.Fatalf("overall: %v", got["rating"])
+	}
+	// no review at all: averages are zero with a zero count
+	other := e.createListing()
+	z := e.expect(200, "GET", path("/listings/%d/reviews", other), "", nil).(obj)
+	if z["water"].(float64) != 0 || num(z, "water_count") != 0 {
+		t.Fatalf("empty: %v", z)
+	}
+}

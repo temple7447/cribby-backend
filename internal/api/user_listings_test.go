@@ -425,3 +425,30 @@ func TestChecklistKeepsThePhonePrivateAndCatchesRepostedNumbers(t *testing.T) {
 		t.Fatal("same owner, same number is normal")
 	}
 }
+
+func TestVerifierTiersFollowHomesChecked(t *testing.T) {
+	e := newEnv(t)
+	cousin, cu := e.signup("cousin@gmail.com")
+	admin, au := e.signup("boss@gmail.com")
+	e.makeAdmin(id(au))
+	e.expect(200, "PUT", path("/admin/verifiers/%d", id(cu)), admin, obj{"kind": "cousin"})
+	for _, c := range []struct {
+		count int
+		tier  string
+		next  int
+	}{{0, "starter", 5}, {4, "starter", 5}, {5, "bronze", 15}, {14, "bronze", 15}, {15, "silver", 40}, {39, "silver", 40}, {40, "gold", 0}} {
+		e.exec(`UPDATE verifiers SET verified_count = ? WHERE user_id = ?`, c.count, id(cu))
+		me := e.expect(200, "GET", "/verifier/me", cousin, nil).(obj)
+		if me["tier"] != c.tier || num(me, "next_tier_at") != c.next || num(me, "verified_count") != c.count {
+			t.Fatalf("count %d: %v", c.count, me)
+		}
+		if got := list(e.expect(200, "GET", "/admin/verifiers", admin, nil))[0].(obj); got["tier"] != c.tier {
+			t.Fatalf("admin list count %d: %v", c.count, got)
+		}
+	}
+	// people who aren't verifiers get no tier
+	plain, _ := e.signup("plain@gmail.com")
+	if me := e.expect(200, "GET", "/verifier/me", plain, nil).(obj); me["is_verifier"] != false || me["tier"] != "" {
+		t.Fatalf("plain user: %v", me)
+	}
+}

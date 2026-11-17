@@ -7,11 +7,12 @@ import (
 	"campus-backend/internal/model"
 )
 
-// Roommate rows are always read joined to their owner: `verified` and
-// `user_avatar_url` are computed from the user, not stored.
+// Roommate rows are always read joined to their owner: `verified`, `student_verified`
+// and `user_avatar_url` are computed from the user, not stored.
 const roommateCols = `r.id, r.user_id, r.name, r.age, r.school, r.year, r.budget_min, r.budget_max, r.move_in_date,
 	r.tags, r.bio, r.looking_for, r.preferred_areas, r.visibility, r.emoji, r.grad, r.banner_url, r.banner_public_id,
-	r.created_at, (u.verification_status = 'verified'), u.avatar_url`
+	r.created_at, (u.verification_status = 'verified'),
+	(u.verification_status = 'verified' AND (LOWER(u.email) LIKE '%.edu.ng' OR LOWER(u.email) LIKE '%.edu')), u.avatar_url`
 
 const roommateFrom = ` FROM roommate_profiles r JOIN users u ON u.id = r.user_id `
 
@@ -19,7 +20,7 @@ func scanRoommate(s rowScanner) (model.RoommateProfile, error) {
 	var r model.RoommateProfile
 	err := s.Scan(&r.ID, &r.UserID, &r.Name, &r.Age, &r.School, &r.Year, &r.BudgetMin, &r.BudgetMax, &r.MoveInDate,
 		&r.Tags, &r.Bio, &r.LookingFor, &r.PreferredAreas, &r.Visibility, &r.Emoji, &r.Grad, &r.BannerURL,
-		&r.BannerPublicID, &r.CreatedAt, &r.Verified, &r.UserAvatarURL)
+		&r.BannerPublicID, &r.CreatedAt, &r.Verified, &r.StudentVerified, &r.UserAvatarURL)
 	return r, err
 }
 
