@@ -341,3 +341,29 @@ type Checklist struct {
 	Permission   bool   `json:"permission"`
 	ContactPhone string `json:"contact_phone,omitempty"`
 }
+
+// Campus is a landing page for one school (cribby.space/<slug>).
+type Campus struct {
+	Slug        string  `json:"slug"`
+	School      School  `json:"school"`
+	WhatsAppURL string  `json:"whatsapp_url"`
+	Tagline     string  `json:"tagline"`
+	Active      bool    `json:"active"`
+	CreatedAt   db.Time `json:"created_at"`
+	HomesNear   int     `json:"homes_near"` // approved homes within 5 km of the school
+}
+
+// ReferralCode is a group leader's link code with its results. A rental counts once the landlord approves.
+type ReferralCode struct {
+	Code       string  `json:"code"`
+	Label      string  `json:"label"`
+	CampusSlug string  `json:"campus_slug"`
+	Active     bool    `json:"active"`
+	CreatedAt  db.Time `json:"created_at"`
+	OwnerID    int     `json:"owner_id"`
+	OwnerEmail string  `json:"owner_email"`
+	OwnerName  string  `json:"owner_name"`
+	Signups    int     `json:"signups"`
+	Requests   int     `json:"requests"` // booking requests by people who came through the code
+	Rentals    int     `json:"rentals"`  // of those, approved by the landlord
+}

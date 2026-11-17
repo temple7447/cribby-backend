@@ -295,6 +295,26 @@ var goMigrations = []struct {
 			contact_phone VARCHAR(30) NOT NULL DEFAULT '', updated_at {TS} NOT NULL)`,
 		`CREATE INDEX ix_listing_checklists_phone ON listing_checklists (contact_phone)`,
 	}},
+	// Campus landing pages: cribby.space/<slug> for one school, with its own WhatsApp group link.
+	{"014_campuses", []string{
+		`CREATE TABLE campuses (
+			slug VARCHAR(40) NOT NULL PRIMARY KEY, school_id INTEGER NOT NULL REFERENCES schools (id),
+			whatsapp_url VARCHAR(300) NOT NULL DEFAULT '', tagline VARCHAR(200) NOT NULL DEFAULT '',
+			active BOOLEAN NOT NULL DEFAULT true, created_at {TS} NOT NULL)`,
+	}},
+	// Referral links for group leaders. A code belongs to one person; people who sign up with it are recorded
+	// so we can count signups, requests and approved rentals through it.
+	{"015_referrals", []string{
+		`CREATE TABLE referral_codes (
+			code VARCHAR(30) NOT NULL PRIMARY KEY, owner_id INTEGER NOT NULL REFERENCES users (id),
+			label VARCHAR(120) NOT NULL DEFAULT '', campus_slug VARCHAR(40) NOT NULL DEFAULT '',
+			active BOOLEAN NOT NULL DEFAULT true, created_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_referral_codes_owner ON referral_codes (owner_id)`,
+		`CREATE TABLE referrals (
+			user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users (id),
+			code VARCHAR(30) NOT NULL, created_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_referrals_code ON referrals (code)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

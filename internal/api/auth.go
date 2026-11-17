@@ -37,6 +37,7 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 		DisplayName string `json:"display_name"`
 		School      string `json:"school"`
 		SchoolID    *int   `json:"school_id"` // optional: a school picked from /schools
+		Ref         string `json:"ref"`       // optional: a group leader's referral code
 	}{School: "State University"}
 	if err := bindJSON(r, &p); err != nil {
 		return err
@@ -91,6 +92,7 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	s.attachReferral(r, user.ID, p.Ref)
 	s.recordLogin(r.Context(), user)
 	resp, err := s.tokenFor(user)
 	if err != nil {

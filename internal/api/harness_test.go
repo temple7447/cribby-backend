@@ -491,3 +491,5 @@ func list(v any) []any { return v.([]any) }
 func path(format string, a ...any) string { return fmt.Sprintf(format, a...) }
 
 func syncSchools(e *env) (bool, error) { return store.SyncSchools(context.Background(), e.db) }
+
+func past10Days() db.Time { return db.Time{Time: time.Now().UTC().Add(-10 * 24 * time.Hour)} }
