@@ -72,3 +72,20 @@ func TestValidateRefusesTheDefaultSecretOutsideDevelopment(t *testing.T) {
 		}
 	}
 }
+
+func TestBackupModelDefaultsToAFreeModelAndCanBeTurnedOff(t *testing.T) {
+	t.Chdir(t.TempDir())
+	os.Unsetenv("OPENROUTER_FALLBACK_MODEL")
+	c := Load()
+	if c.OpenRouterModel != "dots-studio/dots-3-note-preview:free" || c.OpenRouterFallbackModel != "nvidia/nemotron-3-ultra-550b-a55b:free" {
+		t.Fatalf("models: %q then %q", c.OpenRouterModel, c.OpenRouterFallbackModel)
+	}
+	t.Setenv("OPENROUTER_FALLBACK_MODEL", "")
+	if got := Load().OpenRouterFallbackModel; got != "" {
+		t.Fatalf("an empty setting should turn the backup off, got %q", got)
+	}
+	t.Setenv("OPENROUTER_FALLBACK_MODEL", "google/gemma-4-31b-it:free")
+	if got := Load().OpenRouterFallbackModel; got != "google/gemma-4-31b-it:free" {
+		t.Fatalf("got %q", got)
+	}
+}

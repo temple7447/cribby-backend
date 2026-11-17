@@ -107,8 +107,14 @@ recommended, off-topic requests are declined, replies are cleaned to plain text,
 turns / 1,000 chars each, and each user gets 15 requests per 10 minutes (429 after that). The model's private
 "reasoning" is never sent to the user. Without `OPENROUTER_API_KEY` the endpoint answers 503.
 
-Default model: `dots-studio/dots-3-note-preview:free` — measured faster (4–9 s) and steadier than
-`xingchen-agi/xing4.0-29b-a4b:free` (10–50 s, one failure in three) on the same prompts. Change it with `OPENROUTER_MODEL`.
+Models (both free): `OPENROUTER_MODEL` answers first (default `dots-studio/dots-3-note-preview:free`, measured faster
+(4–9 s) and steadier than `xingchen-agi/xing4.0-29b-a4b:free` on the same prompts). `OPENROUTER_FALLBACK_MODEL`
+(default `nvidia/nemotron-3-ultra-550b-a55b:free`) answers only when the first one fails: an error, a rate limit,
+a retired model, an empty answer or a 35-second hang. A model that just failed rests for a while (10 minutes after a
+rate limit or a retired model, 1 minute otherwise) so users aren't kept waiting on it, and the server logs
+"ai backup model answered" whenever the backup had to step in. A refusal of the text itself (HTTP 400) never benches a
+model. Set `OPENROUTER_FALLBACK_MODEL` to an empty value to turn the backup off. Free models can be capped (reportedly
+about 50 requests a day per OpenRouter account unless $10 of credit has been bought), so check the logs if the AI goes quiet.
 
 ## Admin AI (advisory only)
 

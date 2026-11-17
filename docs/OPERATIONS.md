@@ -9,6 +9,7 @@
 | `RESEND_API_KEY`, `EMAIL_FROM` | Without the key, verification, reset, booking and message emails are only logged, never sent. |
 | `CLOUDINARY_*` | Photo and video uploads answer 503 without them. |
 | `GOOGLE_MAPS_API_KEY`, `OPENROUTER_API_KEY` | Maps/places and the AI concierge. |
+| `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL` | The AI model, and the backup that answers if it fails (both optional; see README "Cribby AI"). |
 | `BACKEND_CORS_ORIGINS` | If set, it **replaces** the built-in list, so include `https://www.cribby.space`, `https://cribby.space`, `https://admin.cribby.space`. |
 
 `server -migrate-only` works without `SECRET_KEY` (it only applies migrations).

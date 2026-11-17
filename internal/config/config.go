@@ -38,9 +38,11 @@ type Settings struct {
 	GoogleMapsAPIKey string
 
 	// OpenRouter (https://openrouter.ai) powers the Cribby AI concierge. Server-side only.
-	OpenRouterAPIKey    string
-	OpenRouterModel     string
-	OpenRouterReasoning bool
+	OpenRouterAPIKey string
+	OpenRouterModel  string
+	// OpenRouterFallbackModel answers when OpenRouterModel fails (an error, a rate limit, a timeout). Empty turns it off.
+	OpenRouterFallbackModel string
+	OpenRouterReasoning     bool
 
 	Port string
 }
@@ -80,9 +82,10 @@ func Load() *Settings {
 
 		GoogleMapsAPIKey: str("GOOGLE_MAPS_API_KEY", ""),
 
-		OpenRouterAPIKey:    str("OPENROUTER_API_KEY", ""),
-		OpenRouterModel:     str("OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free"),
-		OpenRouterReasoning: boolean("OPENROUTER_REASONING", true),
+		OpenRouterAPIKey:        str("OPENROUTER_API_KEY", ""),
+		OpenRouterModel:         str("OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free"),
+		OpenRouterFallbackModel: str("OPENROUTER_FALLBACK_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"),
+		OpenRouterReasoning:     boolean("OPENROUTER_REASONING", true),
 
 		Port: str("PORT", "8000"),
 	}

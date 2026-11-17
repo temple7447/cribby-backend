@@ -70,7 +70,7 @@ func main() {
 		email.NewResend(cfg.ResendAPIKey, cfg.EmailFrom, cfg.EmailVerifyExpireMinutes, cfg.PasswordResetExpireMinutes),
 		storage.NewCloudinary(cfg.CloudinaryCloudName, cfg.CloudinaryAPIKey, cfg.CloudinaryAPISecret),
 		google.New(cfg.GoogleMapsAPIKey),
-		ai.New(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, cfg.OpenRouterReasoning),
+		withAILog(ai.New(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, cfg.OpenRouterReasoning).WithFallback(cfg.OpenRouterFallbackModel), log),
 		log)
 
 	httpSrv := &http.Server{
@@ -98,4 +98,10 @@ func main() {
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 		log.Error("shutdown", "err", err)
 	}
+}
+
+// withAILog lets the assistant say when a backup model had to answer.
+func withAILog(c *ai.Client, log *slog.Logger) *ai.Client {
+	c.Log = log
+	return c
 }
