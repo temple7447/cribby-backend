@@ -26,6 +26,8 @@ type Sender interface {
 	SendNewMessage(ctx context.Context, to, fromName, listingTitle, preview string, toLandlord bool) error
 	// SendLandlordVerification tells a landlord whether their ID check was approved; note is the reason when it wasn't.
 	SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error
+	// SendOrderUpdate tells a buyer or seller what happened to a marketplace order.
+	SendOrderUpdate(ctx context.Context, to, title, intro, item, callout string) error
 }
 
 type Resend struct {
@@ -105,4 +107,8 @@ func (r *Resend) SendNewMessage(ctx context.Context, to, fromName, listingTitle,
 
 func (r *Resend) SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error {
 	return r.send(ctx, to, LandlordVerificationEmail(approved, note), "")
+}
+
+func (r *Resend) SendOrderUpdate(ctx context.Context, to, title, intro, item, callout string) error {
+	return r.send(ctx, to, OrderEmail(title, intro, item, callout), "")
 }

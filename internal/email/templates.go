@@ -383,3 +383,18 @@ func LandlordVerificationEmail(approved bool, note string) Message {
 	}
 	return render(v)
 }
+
+// OrderEmail tells someone about a step in a marketplace order. The money is held by Cribby until the buyer has the item.
+func OrderEmail(title, intro, item, callout string) Message {
+	v := newView()
+	v.Button, v.ButtonURL = "Open Cribby", websiteURL
+	v.Reason = "You're receiving this because of an order on the Cribby marketplace."
+	v.Subject, v.Preheader = title, intro
+	v.Emoji, v.Band = "🛒", brandViolet
+	v.Title, v.Intro = title, intro
+	if item != "" {
+		v.Rows = []kv{{"Item", item}}
+	}
+	v.Callout = callout
+	return render(v)
+}

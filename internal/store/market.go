@@ -117,3 +117,14 @@ func SearchMarket(ctx context.Context, ex db.Executor, f MarketSearch, limit int
 	}
 	return items, nil
 }
+
+// MoveMarketItem changes an item's status only if it currently has one of the `from` statuses.
+func MoveMarketItem(ctx context.Context, ex db.Executor, id int, from []string, to string) error {
+	marks := strings.TrimSuffix(strings.Repeat("?,", len(from)), ",")
+	args := []any{to, db.Now(), id}
+	for _, f := range from {
+		args = append(args, f)
+	}
+	_, err := ex.Exec(ctx, `UPDATE market_items SET status = ?, updated_at = ? WHERE id = ? AND status IN (`+marks+`)`, args...)
+	return err
+}

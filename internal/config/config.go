@@ -44,6 +44,15 @@ type Settings struct {
 	OpenRouterFallbackModel string
 	OpenRouterReasoning     bool
 
+	// Paystack takes card payments for marketplace orders. Empty keeps buying switched off.
+	PaystackSecretKey string
+	// PlatformFeePercent is Cribby's cut of each sale, taken from the seller's side.
+	PlatformFeePercent int
+	// OrderAutoReleaseDays: after the seller says they handed it over, the buyer has this long to object before the money is released.
+	OrderAutoReleaseDays int
+	// PaymentReturnURL is the page the buyer lands on after paying.
+	PaymentReturnURL string
+
 	Port string
 }
 
@@ -86,6 +95,11 @@ func Load() *Settings {
 		OpenRouterModel:         str("OPENROUTER_MODEL", "dots-studio/dots-3-note-preview:free"),
 		OpenRouterFallbackModel: str("OPENROUTER_FALLBACK_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free"),
 		OpenRouterReasoning:     boolean("OPENROUTER_REASONING", true),
+
+		PaystackSecretKey:    str("PAYSTACK_SECRET_KEY", ""),
+		PlatformFeePercent:   integer("PLATFORM_FEE_PERCENT", 5),
+		OrderAutoReleaseDays: integer("ORDER_AUTO_RELEASE_DAYS", 3),
+		PaymentReturnURL:     str("PAYMENT_RETURN_URL", "https://www.cribby.space/payment-done"),
 
 		Port: str("PORT", "8000"),
 	}

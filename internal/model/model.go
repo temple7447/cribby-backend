@@ -419,10 +419,59 @@ type MarketItem struct {
 	ContactPhone string             `json:"contact_phone,omitempty"`
 	LeavingSoon  bool               `json:"leaving_soon"` // sold by someone leaving: a room may be about to open up
 	Photos       db.JSONList[Photo] `json:"photos"`
-	Status       string             `json:"status"` // active | sold | reported | removed
+	Status       string             `json:"status"` // active | reserved | sold | reported | removed
 	Mine         bool               `json:"mine"`
-	CreatedAt    db.Time            `json:"created_at"`
-	UpdatedAt    db.Time            `json:"updated_at"`
+	// CanBuy: the buyer can pay through Cribby (payments are on, it has a price and the seller can be paid).
+	CanBuy    bool    `json:"can_buy"`
+	CreatedAt db.Time `json:"created_at"`
+	UpdatedAt db.Time `json:"updated_at"`
+}
+
+// Order is a marketplace purchase whose money Cribby holds until the buyer has the item.
+// status: awaiting_payment | paid | handed_over | completed | disputed | refunded | cancelled.
+type Order struct {
+	ID              int      `json:"id"`
+	ItemID          int      `json:"item_id"`
+	BuyerID         int      `json:"-"`
+	SellerID        int      `json:"-"`
+	Title           string   `json:"title"`
+	Amount          int      `json:"amount"` // naira the buyer pays
+	Fee             int      `json:"fee"`    // Cribby's cut, taken from the seller's side
+	SellerAmount    int      `json:"seller_amount"`
+	Status          string   `json:"status"`
+	Reference       string   `json:"-"`
+	PaymentURL      string   `json:"payment_url,omitempty"`
+	BuyerPhone      string   `json:"buyer_phone,omitempty"`
+	SellerPhone     string   `json:"seller_phone,omitempty"`
+	DisputeReason   string   `json:"dispute_reason"`
+	ResolutionNote  string   `json:"resolution_note"`
+	PayoutStatus    string   `json:"payout_status"` // none | queued | paid
+	PayoutReference string   `json:"payout_reference,omitempty"`
+	CreatedAt       db.Time  `json:"created_at"`
+	UpdatedAt       db.Time  `json:"updated_at"`
+	PaidAt          *db.Time `json:"paid_at"`
+	HandedOverAt    *db.Time `json:"handed_over_at"`
+	AutoReleaseAt   *db.Time `json:"auto_release_at"`
+	CompletedAt     *db.Time `json:"completed_at"`
+}
+
+// OrderEvent is one step in an order's history.
+type OrderEvent struct {
+	ID        int     `json:"id"`
+	OrderID   int     `json:"-"`
+	ActorID   *int    `json:"-"`
+	Event     string  `json:"event"`
+	Note      string  `json:"note"`
+	CreatedAt db.Time `json:"created_at"`
+}
+
+// PayoutAccount is where a seller's money is sent.
+type PayoutAccount struct {
+	UserID        int     `json:"-"`
+	BankName      string  `json:"bank_name"`
+	AccountNumber string  `json:"account_number"`
+	AccountName   string  `json:"account_name"`
+	UpdatedAt     db.Time `json:"updated_at"`
 }
 
 func (m *MarketItem) Coords() (*float64, *float64) { return m.Latitude, m.Longitude }

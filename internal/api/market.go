@@ -141,6 +141,7 @@ func (s *Server) listMarket(w http.ResponseWriter, r *http.Request) error {
 	out := make([]*model.MarketItem, len(items))
 	for i, m := range items {
 		present(m, viewer, false)
+		m.CanBuy = s.canTakePayments() && m.Status == "active" && m.Price >= minOrderPrice && !m.Mine
 		out[i] = m
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -157,6 +158,13 @@ func (s *Server) getMarketItem(w http.ResponseWriter, r *http.Request) error {
 		return httpErr(http.StatusNotFound, "Item not found")
 	}
 	present(m, viewer, true)
+	if s.canTakePayments() && m.Status == "active" && m.Price >= minOrderPrice && !m.Mine {
+		acct, err := store.PayoutAccountFor(r.Context(), s.DB.Executor, m.UserID)
+		if err != nil {
+			return err
+		}
+		m.CanBuy = acct != nil
+	}
 	writeJSON(w, http.StatusOK, m)
 	return nil
 }
@@ -232,6 +240,9 @@ func (s *Server) updateMarketItem(w http.ResponseWriter, r *http.Request) error 
 	if err := ownsItem(user, m); err != nil {
 		return err
 	}
+	if m.Status == "reserved" {
+		return httpErr(http.StatusConflict, "A buyer has paid for this item. Finish that order first")
+	}
 	var in marketInput
 	if err := bindJSON(r, &in); err != nil {
 		return err
@@ -268,6 +279,9 @@ func (s *Server) deleteMarketItem(w http.ResponseWriter, r *http.Request) error 
 	}
 	if err := ownsItem(user, m); err != nil {
 		return err
+	}
+	if m.Status == "reserved" {
+		return httpErr(http.StatusConflict, "A buyer has paid for this item. Finish that order first")
 	}
 	if err := store.SetMarketStatus(r.Context(), s.DB.Executor, m.ID, "removed"); err != nil {
 		return err

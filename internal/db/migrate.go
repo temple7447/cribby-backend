@@ -387,6 +387,32 @@ var goMigrations = []struct {
 			note VARCHAR(500) NOT NULL DEFAULT '', submitted_at {TS} NOT NULL, reviewed_at {TS})`,
 		`CREATE INDEX ix_student_verifications_status ON student_verifications (status, submitted_at)`,
 	}},
+	// Marketplace orders with the money held by Cribby until the buyer has the item. Every change is also written to order_events.
+	{"024_orders", []string{
+		`CREATE TABLE orders (
+			id {PK}, item_id INTEGER NOT NULL REFERENCES market_items (id),
+			buyer_id INTEGER NOT NULL REFERENCES users (id), seller_id INTEGER NOT NULL REFERENCES users (id),
+			title VARCHAR(120) NOT NULL, amount INTEGER NOT NULL, fee INTEGER NOT NULL, seller_amount INTEGER NOT NULL,
+			status VARCHAR(20) NOT NULL, reference VARCHAR(60) NOT NULL, payment_url TEXT NOT NULL DEFAULT '',
+			buyer_phone VARCHAR(30) NOT NULL DEFAULT '', seller_phone VARCHAR(30) NOT NULL DEFAULT '',
+			dispute_reason VARCHAR(500) NOT NULL DEFAULT '', resolution_note VARCHAR(500) NOT NULL DEFAULT '',
+			payout_status VARCHAR(10) NOT NULL DEFAULT 'none', payout_reference VARCHAR(120) NOT NULL DEFAULT '',
+			created_at {TS} NOT NULL, updated_at {TS} NOT NULL, paid_at {TS}, handed_over_at {TS},
+			auto_release_at {TS}, completed_at {TS},
+			CONSTRAINT uq_orders_reference UNIQUE (reference))`,
+		`CREATE INDEX ix_orders_buyer ON orders (buyer_id, created_at)`,
+		`CREATE INDEX ix_orders_seller ON orders (seller_id, created_at)`,
+		`CREATE INDEX ix_orders_item ON orders (item_id, status)`,
+		`CREATE INDEX ix_orders_status ON orders (status, auto_release_at)`,
+		`CREATE TABLE order_events (
+			id {PK}, order_id INTEGER NOT NULL REFERENCES orders (id), actor_id INTEGER,
+			event VARCHAR(30) NOT NULL, note VARCHAR(500) NOT NULL DEFAULT '', created_at {TS} NOT NULL)`,
+		`CREATE INDEX ix_order_events_order ON order_events (order_id, created_at)`,
+		`CREATE TABLE payout_accounts (
+			user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users (id),
+			bank_name VARCHAR(60) NOT NULL, account_number VARCHAR(10) NOT NULL, account_name VARCHAR(100) NOT NULL,
+			updated_at {TS} NOT NULL)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

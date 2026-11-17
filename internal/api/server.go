@@ -17,6 +17,7 @@ import (
 	"campus-backend/internal/email"
 	"campus-backend/internal/google"
 	"campus-backend/internal/model"
+	"campus-backend/internal/payments"
 	"campus-backend/internal/security"
 	"campus-backend/internal/storage"
 	"campus-backend/internal/store"
@@ -30,6 +31,7 @@ type Server struct {
 	maps   *google.Client
 	// assistant is the OpenRouter-backed Cribby AI; chats rate-limits it per user.
 	assistant  *ai.Client
+	pay        payments.Provider // card payments for marketplace orders; off when no key is set
 	chats      *chatLimiter
 	errReports *attemptLimiter // per-address cap on client error reports
 	auth       *authLimits     // throttles sign-in, sign-up, password reset and code guessing
@@ -39,8 +41,14 @@ type Server struct {
 }
 
 func New(cfg *config.Settings, database *db.DB, mail email.Sender, photos storage.Storage, maps *google.Client, assistant *ai.Client, log *slog.Logger) *Server {
-	s := &Server{cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), auth: newAuthLimits(), errReports: newAttemptLimiter(time.Hour), mapsLimit: newLimiter(150, 10*time.Minute), log: log, mux: http.NewServeMux()}
+	s := &Server{pay: payments.NewPaystack(cfg.PaystackSecretKey), cfg: cfg, DB: database, mail: mail, photos: photos, maps: maps, assistant: assistant, chats: newChatLimiter(), auth: newAuthLimits(), errReports: newAttemptLimiter(time.Hour), mapsLimit: newLimiter(150, 10*time.Minute), log: log, mux: http.NewServeMux()}
 	s.routes()
+	return s
+}
+
+// WithPayments swaps the payment processor (tests use a fake).
+func (s *Server) WithPayments(p payments.Provider) *Server {
+	s.pay = p
 	return s
 }
 
@@ -118,6 +126,20 @@ func (s *Server) routes() {
 	m.Handle("DELETE "+p+"/market/{item_id}", s.h(s.deleteMarketItem))
 	m.Handle("POST "+p+"/market/{item_id}/photos", s.h(s.uploadMarketPhoto))
 	m.Handle("DELETE "+p+"/market/{item_id}/photos/{photo_id}", s.h(s.deleteMarketPhoto))
+	m.Handle("POST "+p+"/market/{item_id}/orders", s.h(s.createOrder))
+	m.Handle("GET "+p+"/orders", s.h(s.myOrders))
+	m.Handle("GET "+p+"/orders/{order_id}", s.h(s.getOrder))
+	m.Handle("POST "+p+"/orders/{order_id}/handed-over", s.h(s.orderHandedOver))
+	m.Handle("POST "+p+"/orders/{order_id}/confirm", s.h(s.orderConfirm))
+	m.Handle("POST "+p+"/orders/{order_id}/dispute", s.h(s.orderDispute))
+	m.Handle("POST "+p+"/orders/{order_id}/cancel", s.h(s.orderCancel))
+	m.Handle("POST "+p+"/webhooks/paystack", s.h(s.paystackWebhook))
+	m.Handle("GET "+p+"/payout-account", s.h(s.myPayoutAccount))
+	m.Handle("PUT "+p+"/payout-account", s.h(s.savePayoutAccount))
+	m.Handle("GET "+p+"/admin/orders", s.h(s.adminOrders))
+	m.Handle("POST "+p+"/admin/orders/{order_id}/resolve", s.h(s.adminResolveOrder))
+	m.Handle("GET "+p+"/admin/payouts", s.h(s.adminPayouts))
+	m.Handle("POST "+p+"/admin/orders/{order_id}/payout-paid", s.h(s.adminPayoutPaid))
 	m.Handle("GET "+p+"/vendors", s.h(s.listVendors))
 	m.Handle("POST "+p+"/vendors", s.h(s.createVendor))
 	m.Handle("GET "+p+"/vendors/mine", s.h(s.myVendors))

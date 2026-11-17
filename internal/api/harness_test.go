@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,6 +26,7 @@ import (
 	"campus-backend/internal/config"
 	"campus-backend/internal/db"
 	"campus-backend/internal/google"
+	"campus-backend/internal/payments"
 	"campus-backend/internal/security"
 	"campus-backend/internal/storage"
 	"campus-backend/internal/store"
@@ -35,6 +37,7 @@ type sentCode struct{ To, Code string }
 // fakeMail records what would have been emailed.
 type fakeMail struct {
 	mu               sync.Mutex
+	orderUpdates     [][2]string
 	verifications    []sentCode
 	resets           []sentCode
 	bookingRequests  []string    // admin emails
@@ -55,6 +58,13 @@ func (f *fakeMail) SendLandlordVerification(_ context.Context, to string, approv
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.landlordChecks = append(f.landlordChecks, sentCheck{to, approved, note})
+	return nil
+}
+
+func (f *fakeMail) SendOrderUpdate(_ context.Context, to, title, _, _, _ string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.orderUpdates = append(f.orderUpdates, [2]string{to, title})
 	return nil
 }
 
@@ -316,6 +326,47 @@ type env struct {
 	photos *fakeStorage
 	google *fakeGoogle
 	ai     *fakeAI
+	pay    *fakePay
+	api    *api.Server
+}
+
+// fakePay stands in for Paystack: tests decide what has been "paid" and whether a refund works.
+type fakePay struct {
+	mu         sync.Mutex
+	on         bool
+	paid       map[string]int // reference -> kobo
+	initiated  []payments.InitArgs
+	refunded   []string
+	failRefund bool
+}
+
+func (f *fakePay) Configured() bool { return f.on }
+func (f *fakePay) Initialize(_ context.Context, a payments.InitArgs) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.initiated = append(f.initiated, a)
+	return "https://checkout.paystack.test/" + a.Reference, nil
+}
+func (f *fakePay) Verify(_ context.Context, ref string) (payments.Charge, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	k, ok := f.paid[ref]
+	return payments.Charge{Paid: ok, AmountKobo: k}, nil
+}
+func (f *fakePay) Refund(_ context.Context, ref string, _ int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failRefund {
+		return errors.New("paystack down")
+	}
+	f.refunded = append(f.refunded, ref)
+	return nil
+}
+func (f *fakePay) ValidWebhook(_ []byte, sig string) bool { return sig == "valid-signature" }
+func (f *fakePay) pay(ref string, kobo int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.paid[ref] = kobo
 }
 
 // openTestDB returns an empty migrated database: in-memory SQLite by default, or
@@ -368,7 +419,9 @@ func newEnv(t *testing.T) *env {
 	}}
 	cfg := config.Load()
 	cfg.SecretKey = "test-secret"
-	e.srv = httptest.NewServer(api.New(cfg, d, e.mail, e.photos, e.google.client, e.ai.client, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
+	e.pay = &fakePay{on: true, paid: map[string]int{}}
+	e.api = api.New(cfg, d, e.mail, e.photos, e.google.client, e.ai.client, slog.New(slog.NewTextHandler(io.Discard, nil))).WithPayments(e.pay)
+	e.srv = httptest.NewServer(e.api.Handler())
 	t.Cleanup(func() { e.srv.Close(); e.google.srv.Close(); e.ai.srv.Close(); d.Close() })
 	return e
 }
