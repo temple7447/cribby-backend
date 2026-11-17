@@ -6,6 +6,9 @@
 //	              (the old scripts/seed_places.py); safe against production
 //	seed photos   attach a stock photo to each demo listing via Cloudinary
 //	              (the old scripts/seed_photos.py)
+//	seed realistic [-apply] [-lock-demo-accounts]
+//	              replace the placeholder demo homes with realistic Nigerian SAMPLE homes
+//	              (dry run unless -apply; see realistic.go)
 package main
 
 import (
@@ -24,7 +27,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: seed demo|places|photos")
+		fmt.Fprintln(os.Stderr, "usage: seed demo|places|photos|realistic")
 		os.Exit(2)
 	}
 	cfg := config.Load()
@@ -48,6 +51,8 @@ func main() {
 		err = seedPlaces(ctx, database)
 	case "photos":
 		err = seedPhotos(ctx, database, cfg)
+	case "realistic":
+		err = seedRealistic(ctx, database, os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown subcommand %q", os.Args[1])
 	}
