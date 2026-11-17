@@ -31,9 +31,18 @@ func RemoveVerifier(ctx context.Context, ex db.Executor, userID int) error {
 	return err
 }
 
-// CreditVerifier adds one to the person's count of homes they have checked.
-func CreditVerifier(ctx context.Context, ex db.Executor, userID int) error {
-	_, err := ex.Exec(ctx, `UPDATE verifiers SET verified_count = verified_count + 1 WHERE user_id = ?`, userID)
+// CreditVerifier adds one to the person's count of homes they have checked, once per home: doing it again
+// for the same home (say after un-verifying and re-verifying it) changes nothing.
+func CreditVerifier(ctx context.Context, ex db.Executor, userID, listingID int) error {
+	res, err := ex.Exec(ctx, `INSERT INTO verifier_credits (listing_id, user_id, created_at) VALUES (?,?,?) ON CONFLICT (listing_id, user_id) DO NOTHING`,
+		listingID, userID, db.Now())
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil
+	}
+	_, err = ex.Exec(ctx, `UPDATE verifiers SET verified_count = verified_count + 1 WHERE user_id = ?`, userID)
 	return err
 }
 

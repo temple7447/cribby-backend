@@ -434,7 +434,7 @@ func (s *Server) setListingVerified(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	if p.Verified && !l.Verified { // count it for the verifier's track record (admins aren't tracked)
-		if err := store.CreditVerifier(ctx, ex, user.ID); err != nil {
+		if err := store.CreditVerifier(ctx, ex, user.ID, l.ID); err != nil {
 			s.log.Warn("could not credit verifier", "err", err)
 		}
 	}

@@ -24,6 +24,8 @@ type Sender interface {
 	SendOwnerBookingRequest(ctx context.Context, ownerEmail, studentName, listingTitle, moveInDate string) error
 	// SendNewMessage tells someone they have a new chat message (toLandlord: the recipient is the landlord).
 	SendNewMessage(ctx context.Context, to, fromName, listingTitle, preview string, toLandlord bool) error
+	// SendLandlordVerification tells a landlord whether their ID check was approved; note is the reason when it wasn't.
+	SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error
 }
 
 type Resend struct {
@@ -99,4 +101,8 @@ func (r *Resend) SendOwnerBookingRequest(ctx context.Context, ownerEmail, studen
 
 func (r *Resend) SendNewMessage(ctx context.Context, to, fromName, listingTitle, preview string, toLandlord bool) error {
 	return r.send(ctx, to, NewMessageEmail(toLandlord, fromName, listingTitle, preview), "")
+}
+
+func (r *Resend) SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error {
+	return r.send(ctx, to, LandlordVerificationEmail(approved, note), "")
 }

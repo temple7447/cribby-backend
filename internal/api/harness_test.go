@@ -41,7 +41,21 @@ type fakeMail struct {
 	decisions        [][2]string // {student email, status}
 	ownerRequests    []string    // landlord emails told about a booking request
 	messages         []sentMessage
+	landlordChecks   []sentCheck // landlords told how their ID check went
 	failVerification bool
+}
+
+type sentCheck struct {
+	to       string
+	approved bool
+	note     string
+}
+
+func (f *fakeMail) SendLandlordVerification(_ context.Context, to string, approved bool, note string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.landlordChecks = append(f.landlordChecks, sentCheck{to, approved, note})
+	return nil
 }
 
 func (f *fakeMail) SendVerification(_ context.Context, to, code string) error {

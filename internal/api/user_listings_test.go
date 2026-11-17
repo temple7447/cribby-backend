@@ -361,6 +361,9 @@ func TestVerifiersCanCheckHomesButNotTheirOwn(t *testing.T) {
 	e.expect(403, "PATCH", path("/listings/%d/verified", theirs), other, obj{"verified": true})
 	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": true})
 	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": true}) // twice counts once
+	// un-verifying and re-verifying the same home must not pad the count either
+	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": false})
+	e.expect(200, "PATCH", path("/listings/%d/verified", theirs), cousin, obj{"verified": true})
 	vs = list(e.expect(200, "GET", "/admin/verifiers", admin, nil))
 	if num(vs[0].(obj), "verified_count") != 1 {
 		t.Fatalf("count: %v", vs[0])

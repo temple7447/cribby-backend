@@ -166,6 +166,12 @@ func (s *Server) adminDecideLandlordVerification(w http.ResponseWriter, r *http.
 	if err := store.DecideLandlordVerification(ctx, ex, userID, approve, note); err != nil {
 		return err
 	}
+	// Tell them, so they don't have to keep checking the app. A failed email never undoes the decision.
+	if u, err := store.UserByID(ctx, ex, userID); err == nil && u != nil {
+		if err := s.mail.SendLandlordVerification(ctx, u.Email, approve, note); err != nil {
+			s.log.Warn("landlord verification email failed", "to", u.Email, "err", err)
+		}
+	}
 	v, err = store.LandlordVerificationFor(ctx, ex, userID)
 	if err != nil {
 		return err

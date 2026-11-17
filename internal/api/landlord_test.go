@@ -52,6 +52,10 @@ func TestLandlordVerificationFlow(t *testing.T) {
 	if got["status"] != "rejected" || got["note"] != "Photo is blurry" {
 		t.Fatalf("got %v", got)
 	}
+	// the landlord is told, with the reason
+	if n := len(e.mail.landlordChecks); n != 1 || e.mail.landlordChecks[0] != (sentCheck{"landlord@gmail.com", false, "Photo is blurry"}) {
+		t.Fatalf("rejection email: %v", e.mail.landlordChecks)
+	}
 
 	// resubmit, get approved: the badge appears on old and new listings
 	if code, _ := e.submitID(token, "08031234567", "passport"); code != 200 {
@@ -61,6 +65,9 @@ func TestLandlordVerificationFlow(t *testing.T) {
 		t.Fatalf("old ID photo should be deleted: %v", e.photos.destroyed)
 	}
 	e.expect(200, "PATCH", path("/admin/landlord-verifications/%d", uid), adminTok, obj{"decision": "approve"})
+	if n := len(e.mail.landlordChecks); n != 2 || !e.mail.landlordChecks[1].approved {
+		t.Fatalf("approval email: %v", e.mail.landlordChecks)
+	}
 	if n := e.count(`SELECT COUNT(*) FROM listings WHERE id = ? AND landlord_verified = ?`, before, true); n != 1 {
 		t.Fatal("existing listing should get the badge")
 	}

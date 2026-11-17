@@ -355,3 +355,31 @@ func NewMessageEmail(toLandlord bool, from, listing, preview string) Message {
 	}
 	return render(v)
 }
+
+// LandlordVerificationEmail tells a landlord how their ID check went. On a rejection, note says why, so they know what to fix.
+func LandlordVerificationEmail(approved bool, note string) Message {
+	v := newView()
+	v.Button, v.ButtonURL = "Open Cribby", websiteURL
+	v.Reason = "You're receiving this because you sent your ID to get verified on Cribby."
+	if approved {
+		v.Subject = "You're a verified landlord on Cribby ✓"
+		v.Preheader = "Your ID was checked. A ✓ Verified landlord badge now shows on your listings."
+		v.Emoji, v.Band = "✅", brandMint
+		v.Title = "You're verified!"
+		v.Intro = "Thanks for sending your ID. We checked it, and your listings now carry the ✓ Verified landlord badge."
+		v.Callout = "New homes you post go live straight away, and students see the badge, which helps them trust you and book faster."
+		v.Button = "See my listings"
+	} else {
+		v.Subject = "We couldn't verify your ID yet"
+		v.Preheader = "Here's what to fix, then send it again."
+		v.Emoji, v.Band = "🪪", brandViolet
+		v.Title = "Your ID wasn't approved yet"
+		v.Intro = "We looked at the ID you sent, but couldn't approve it this time."
+		if note != "" {
+			v.Rows = []kv{{"Reason", note}}
+		}
+		v.Callout = "You can send it again: open Cribby, go to Profile and tap Get verified. A clear, well-lit photo of the whole ID works best."
+		v.Button = "Try again"
+	}
+	return render(v)
+}

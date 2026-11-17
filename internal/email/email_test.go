@@ -216,3 +216,15 @@ func TestExpiryWording(t *testing.T) {
 		t.Error("plural minutes")
 	}
 }
+
+func TestLandlordVerificationEmails(t *testing.T) {
+	r, bodies, _ := fakeResend(t, 200)
+	_ = r.SendLandlordVerification(context.Background(), "l@x.co", true, "")
+	_ = r.SendLandlordVerification(context.Background(), "l@x.co", false, "Photo is blurry")
+	if (*bodies)[0]["subject"] != "You're a verified landlord on Cribby ✓" || (*bodies)[1]["subject"] != "We couldn't verify your ID yet" {
+		t.Fatalf("subjects: %v / %v", (*bodies)[0]["subject"], (*bodies)[1]["subject"])
+	}
+	if html, _ := (*bodies)[1]["html"].(string); !strings.Contains(html, "Photo is blurry") {
+		t.Fatal("the rejection reason must be in the email")
+	}
+}

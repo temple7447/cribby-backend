@@ -373,6 +373,12 @@ var goMigrations = []struct {
 			listing_id INTEGER NOT NULL PRIMARY KEY REFERENCES listings (id),
 			boosted_until {TS} NOT NULL, created_at {TS} NOT NULL)`,
 	}},
+	// A verifier earns credit once per home, so marking it verified, un-verified and verified again can't pad their count.
+	{"022_verifier_credits", []string{
+		`CREATE TABLE verifier_credits (
+			listing_id INTEGER NOT NULL REFERENCES listings (id), user_id INTEGER NOT NULL REFERENCES users (id),
+			created_at {TS} NOT NULL, PRIMARY KEY (listing_id, user_id))`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,
