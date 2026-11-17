@@ -311,6 +311,18 @@ type LandlordVerification struct {
 	ReviewedAt      *db.Time `json:"reviewed_at"`
 }
 
+// StudentVerification is a student-ID check for people without a university email. The photo is
+// private and deleted once an admin decides.
+type StudentVerification struct {
+	UserID          int      `json:"user_id"`
+	Status          string   `json:"status"` // none | pending | verified | rejected
+	School          string   `json:"school"`
+	IDPhotoPublicID string   `json:"-"`
+	Note            string   `json:"note"`
+	SubmittedAt     *db.Time `json:"submitted_at"`
+	ReviewedAt      *db.Time `json:"reviewed_at"`
+}
+
 // Review is one person's rating of a home. Reviewer is a first name only.
 type Review struct {
 	ID        int     `json:"id"`

@@ -379,6 +379,14 @@ var goMigrations = []struct {
 			listing_id INTEGER NOT NULL REFERENCES listings (id), user_id INTEGER NOT NULL REFERENCES users (id),
 			created_at {TS} NOT NULL, PRIMARY KEY (listing_id, user_id))`,
 	}},
+	// Student ID checks for people without a university email: a photo of a student ID, looked at by an admin.
+	{"023_student_verifications", []string{
+		`CREATE TABLE student_verifications (
+			user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users (id), status VARCHAR(12) NOT NULL,
+			school VARCHAR(120) NOT NULL, id_photo_public_id VARCHAR(255) NOT NULL DEFAULT '',
+			note VARCHAR(500) NOT NULL DEFAULT '', submitted_at {TS} NOT NULL, reviewed_at {TS})`,
+		`CREATE INDEX ix_student_verifications_status ON student_verifications (status, submitted_at)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

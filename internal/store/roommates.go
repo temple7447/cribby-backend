@@ -12,7 +12,8 @@ import (
 const roommateCols = `r.id, r.user_id, r.name, r.age, r.school, r.year, r.budget_min, r.budget_max, r.move_in_date,
 	r.tags, r.bio, r.looking_for, r.preferred_areas, r.visibility, r.emoji, r.grad, r.banner_url, r.banner_public_id,
 	r.created_at, (u.verification_status = 'verified'),
-	(u.verification_status = 'verified' AND (LOWER(u.email) LIKE '%.edu.ng' OR LOWER(u.email) LIKE '%.edu')), u.avatar_url`
+	(u.verification_status = 'verified' AND (LOWER(u.email) LIKE '%.edu.ng' OR LOWER(u.email) LIKE '%.edu'
+		OR EXISTS (SELECT 1 FROM student_verifications sv WHERE sv.user_id = u.id AND sv.status = 'verified'))), u.avatar_url`
 
 const roommateFrom = ` FROM roommate_profiles r JOIN users u ON u.id = r.user_id `
 
