@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"campus-backend/internal/db"
@@ -111,11 +112,45 @@ func SetSuspended(ctx context.Context, ex db.Executor, id int, v bool) error {
 	return err
 }
 
-// DeleteUserCascade permanently deletes the account and everything it owns.
-// No ON DELETE CASCADE exists on these foreign keys (SQLite doesn't enforce
-// them locally; Postgres does in production), so cleanup is explicit and
-// ordered. Run it inside a transaction.
+// MoneyInFlight reports whether the person has a payment that is not settled: money being held for them, or a
+// payout Cribby still has to send. They can't delete their account until it is.
+func MoneyInFlight(ctx context.Context, ex db.Executor, userID int) (bool, error) {
+	var n int
+	for _, q := range []string{
+		`SELECT COUNT(*) FROM orders WHERE (buyer_id = ? OR seller_id = ?) AND (status IN ('awaiting_payment','paid','handed_over','disputed')
+			OR (status = 'completed' AND payout_status = 'queued'))`,
+		`SELECT COUNT(*) FROM deposits WHERE (tenant_id = ? OR landlord_id = ?) AND (status IN ('awaiting_payment','paid','disputed')
+			OR (status = 'completed' AND payout_status = 'queued'))`,
+	} {
+		var c int
+		if err := ex.QueryRow(ctx, q, userID, userID).Scan(&c); err != nil {
+			return false, err
+		}
+		n += c
+	}
+	return n > 0, nil
+}
+
+// HasPaymentRecords: orders and deposits are Cribby's accounts, so people who have any are anonymised, not erased.
+func hasPaymentRecords(ctx context.Context, ex db.Executor, userID int) (bool, error) {
+	var a, b int
+	if err := ex.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE buyer_id = ? OR seller_id = ?`, userID, userID).Scan(&a); err != nil {
+		return false, err
+	}
+	if err := ex.QueryRow(ctx, `SELECT COUNT(*) FROM deposits WHERE tenant_id = ? OR landlord_id = ?`, userID, userID).Scan(&b); err != nil {
+		return false, err
+	}
+	return a+b > 0, nil
+}
+
+// DeleteUserCascade removes the account and everything it owns. Their homes are taken down, their vendor pages
+// are kept without an owner. A person with payment records stays behind only as an anonymous row (no email, name
+// or password), because those records have to be kept. Run it inside a transaction.
 func DeleteUserCascade(ctx context.Context, tx db.Executor, userID int) error {
+	records, err := hasPaymentRecords(ctx, tx, userID)
+	if err != nil {
+		return err
+	}
 	steps := []struct {
 		q    string
 		args []any
@@ -128,14 +163,50 @@ func DeleteUserCascade(ctx context.Context, tx db.Executor, userID int) error {
 		{`UPDATE conversations SET roommate_profile_id = NULL
 			WHERE roommate_profile_id IN (SELECT id FROM roommate_profiles WHERE user_id = ?)`, []any{userID}},
 		{`DELETE FROM roommate_profiles WHERE user_id = ?`, []any{userID}},
-		{`DELETE FROM bookings WHERE user_id = ?`, []any{userID}},
+		// Bookings, except the ones a payment record points at.
+		{`DELETE FROM bookings WHERE user_id = ? AND id NOT IN (SELECT booking_id FROM deposits)`, []any{userID}},
 		{`DELETE FROM favorites WHERE user_id = ?`, []any{userID}},
 		{`DELETE FROM blocks WHERE blocker_id = ? OR blocked_id = ?`, []any{userID, userID}},
 		// Preserve moderation history: keep reports this user resolved (as an
 		// admin) but detach the reference; delete reports they filed.
 		{`UPDATE reports SET resolved_by_id = NULL WHERE resolved_by_id = ?`, []any{userID}},
 		{`DELETE FROM reports WHERE reporter_id = ?`, []any{userID}},
-		{`DELETE FROM users WHERE id = ?`, []any{userID}},
+		// Their homes come down; vendor pages stay without an owner.
+		{`UPDATE listings SET status = 'removed', owner_id = NULL WHERE owner_id = ?`, []any{userID}},
+		{`UPDATE vendors SET owner_id = NULL WHERE owner_id = ?`, []any{userID}},
+		{`DELETE FROM reviews WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM verifiers WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM verifier_credits WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM referrals WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM referral_codes WHERE owner_id = ?`, []any{userID}},
+		{`DELETE FROM scam_alerts WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM student_verifications WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM landlord_verifications WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM payout_accounts WHERE user_id = ?`, []any{userID}},
+	}
+	if records {
+		// Items that orders point at stay (taken down, phone number wiped); the rest go.
+		steps = append(steps,
+			struct {
+				q    string
+				args []any
+			}{`UPDATE market_items SET status = 'removed', contact_phone = '' WHERE user_id = ?`, []any{userID}},
+			struct {
+				q    string
+				args []any
+			}{`UPDATE users SET email = ?, name = 'Deleted user', display_name = '', school = '', school_id = NULL, hashed_password = '!deleted',
+				avatar_url = NULL, avatar_public_id = NULL, is_suspended = true, is_admin = false, verification_code_hash = NULL,
+				password_reset_code_hash = NULL WHERE id = ?`, []any{"deleted-" + strconv.Itoa(userID) + "@deleted.invalid", userID}})
+	} else {
+		steps = append(steps,
+			struct {
+				q    string
+				args []any
+			}{`DELETE FROM market_items WHERE user_id = ?`, []any{userID}},
+			struct {
+				q    string
+				args []any
+			}{`DELETE FROM users WHERE id = ?`, []any{userID}})
 	}
 	for _, s := range steps {
 		if _, err := tx.Exec(ctx, s.q, s.args...); err != nil {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"campus-backend/internal/db"
@@ -80,6 +81,13 @@ func (s *Server) deleteMe(w http.ResponseWriter, r *http.Request) error {
 	if !security.VerifyPassword(p.Password, user.HashedPassword) {
 		return httpErr(http.StatusUnauthorized, "Incorrect password")
 	}
+	if busy, err := store.MoneyInFlight(r.Context(), s.DB.Executor, user.ID); err != nil {
+		return err
+	} else if busy {
+		return httpErr(http.StatusConflict, "You have a payment in progress (money being held, or a payout on its way to you). Finish or cancel it, then delete your account")
+	}
+	// Private ID photos are removed from storage too; failing to do so must not stop the deletion.
+	s.dropIDPhotos(r.Context(), user.ID)
 	err = s.DB.InTx(r.Context(), func(tx db.Executor) error {
 		return store.DeleteUserCascade(r.Context(), tx, user.ID)
 	})
@@ -261,4 +269,19 @@ func (s *Server) updateUserFlag(w http.ResponseWriter, r *http.Request, id int, 
 	}
 	writeJSON(w, http.StatusOK, updated)
 	return nil
+}
+
+// dropIDPhotos deletes any ID photo the person uploaded that is still waiting for review.
+func (s *Server) dropIDPhotos(ctx context.Context, userID int) {
+	ex := s.DB.Executor
+	if v, err := store.LandlordVerificationFor(ctx, ex, userID); err == nil && v != nil && v.IDPhotoPublicID != "" {
+		if err := s.photos.DestroyPrivate(ctx, v.IDPhotoPublicID); err != nil {
+			s.log.Warn("could not delete a landlord ID photo", "user", userID, "err", err)
+		}
+	}
+	if v, err := store.StudentVerificationFor(ctx, ex, userID); err == nil && v != nil && v.IDPhotoPublicID != "" {
+		if err := s.photos.DestroyPrivate(ctx, v.IDPhotoPublicID); err != nil {
+			s.log.Warn("could not delete a student ID photo", "user", userID, "err", err)
+		}
+	}
 }
