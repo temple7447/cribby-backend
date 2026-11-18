@@ -28,6 +28,8 @@ type Sender interface {
 	SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error
 	// SendOrderUpdate tells a buyer or seller what happened to a marketplace order.
 	SendOrderUpdate(ctx context.Context, to, title, intro, item, callout string) error
+	// SendSearchAlert tells a student that new homes match a search they saved.
+	SendSearchAlert(ctx context.Context, to, searchName string, titles []string, total int) error
 }
 
 type Resend struct {
@@ -107,6 +109,10 @@ func (r *Resend) SendNewMessage(ctx context.Context, to, fromName, listingTitle,
 
 func (r *Resend) SendLandlordVerification(ctx context.Context, to string, approved bool, note string) error {
 	return r.send(ctx, to, LandlordVerificationEmail(approved, note), "")
+}
+
+func (r *Resend) SendSearchAlert(ctx context.Context, to, searchName string, titles []string, total int) error {
+	return r.send(ctx, to, SearchAlertEmail(searchName, titles, total), "")
 }
 
 func (r *Resend) SendOrderUpdate(ctx context.Context, to, title, intro, item, callout string) error {

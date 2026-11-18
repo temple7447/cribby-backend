@@ -228,3 +228,21 @@ func TestLandlordVerificationEmails(t *testing.T) {
 		t.Fatal("the rejection reason must be in the email")
 	}
 }
+
+func TestSearchAlertEmailNamesTheHomesAndEscapesText(t *testing.T) {
+	m := SearchAlertEmail(`Cheap <b>rooms</b>`, []string{"Studio near UNIBEN", "Room & board"}, 7)
+	if m.Subject != "7 new homes match your search" {
+		t.Fatalf("subject: %q", m.Subject)
+	}
+	for _, want := range []string{"Studio near UNIBEN", "Room &amp; board", "and 5 more", "Saved searches"} {
+		if !strings.Contains(m.HTML, want) {
+			t.Fatalf("html is missing %q", want)
+		}
+	}
+	if strings.Contains(m.HTML, "<b>rooms</b>") {
+		t.Fatal("the search name must be escaped")
+	}
+	if one := SearchAlertEmail("x", []string{"A"}, 1); one.Subject != "A new home matches your search" {
+		t.Fatalf("subject: %q", one.Subject)
+	}
+}

@@ -183,6 +183,8 @@ func DeleteUserCascade(ctx context.Context, tx db.Executor, userID int) error {
 		{`DELETE FROM student_verifications WHERE user_id = ?`, []any{userID}},
 		{`DELETE FROM landlord_verifications WHERE user_id = ?`, []any{userID}},
 		{`DELETE FROM payout_accounts WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM saved_search_seen WHERE search_id IN (SELECT id FROM saved_searches WHERE user_id = ?)`, []any{userID}},
+		{`DELETE FROM saved_searches WHERE user_id = ?`, []any{userID}},
 	}
 	if records {
 		// Items that orders point at stay (taken down, phone number wiped); the rest go.

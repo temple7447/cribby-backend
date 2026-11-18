@@ -553,3 +553,20 @@ type OwnerMoney struct {
 	ToReceive int `json:"to_receive"` // released, waiting for Cribby to send it
 	Received  int `json:"received"`   // already sent to their bank account
 }
+
+// SavedSearch is a set of filters a student wants an email about when a new matching home goes live.
+type SavedSearch struct {
+	ID                   int      `json:"id"`
+	UserID               int      `json:"-"`
+	Name                 string   `json:"name"`
+	MaxPrice             *int     `json:"max_price"`
+	MaxWalk              *int     `json:"max_walk"`
+	RoomType             string   `json:"room_type"`
+	Amenities            []string `json:"amenities"`
+	VerifiedOnly         bool     `json:"verified"`
+	LandlordVerifiedOnly bool     `json:"landlord_verified"`
+	Water                string   `json:"water"`
+	Power                string   `json:"power"`
+	CreatedAt            db.Time  `json:"created_at"`
+	LastSentAt           *db.Time `json:"last_sent_at"`
+}

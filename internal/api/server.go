@@ -204,6 +204,9 @@ func (s *Server) routes() {
 	m.Handle("DELETE "+p+"/places/{place_id}", s.h(s.deletePlace))
 
 	// landlord tools: the signed-in user's own listings' chats and booking requests
+	m.Handle("GET "+p+"/saved-searches", s.h(s.listSavedSearches))
+	m.Handle("POST "+p+"/saved-searches", s.h(s.createSavedSearch))
+	m.Handle("DELETE "+p+"/saved-searches/{search_id}", s.h(s.deleteSavedSearch))
 	m.Handle("GET "+p+"/owner/summary", s.h(s.ownerSummary))
 	m.Handle("GET "+p+"/owner/dashboard", s.h(s.ownerDashboard))
 	m.Handle("GET "+p+"/owner/conversations", s.h(s.ownerConversations))

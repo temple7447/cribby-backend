@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -398,3 +399,26 @@ func OrderEmail(title, intro, item, callout string) Message {
 	v.Callout = callout
 	return render(v)
 }
+
+// SearchAlertEmail: new homes match a search the student saved. At most five homes are named.
+func SearchAlertEmail(searchName string, titles []string, total int) Message {
+	v := newView()
+	v.Button, v.ButtonURL = "See the homes", websiteURL
+	v.Reason = "You're receiving this because you saved this search on Cribby. To stop, open the app: Profile, then Saved searches, and delete it."
+	title := "A new home matches your search"
+	if total > 1 {
+		title = itoaEmail(total) + " new homes match your search"
+	}
+	v.Subject, v.Preheader = title, "“"+searchName+"”"
+	v.Emoji, v.Band = "🔔", brandViolet
+	v.Title, v.Intro = title, "Your saved search “"+searchName+"” has something new."
+	for _, t := range titles {
+		v.Rows = append(v.Rows, kv{"New", t})
+	}
+	if total > len(titles) {
+		v.Callout = "…and " + itoaEmail(total-len(titles)) + " more. Open Cribby to see them all."
+	}
+	return render(v)
+}
+
+func itoaEmail(n int) string { return strconv.Itoa(n) }

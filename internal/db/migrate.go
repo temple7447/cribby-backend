@@ -435,6 +435,18 @@ var goMigrations = []struct {
 			CONSTRAINT uq_listing_views UNIQUE (listing_id, viewer, day))`,
 		`CREATE INDEX ix_listing_views_day ON listing_views (listing_id, day)`,
 	}},
+	{"027_saved_searches", []string{
+		`CREATE TABLE saved_searches (
+			id {PK}, user_id INTEGER NOT NULL REFERENCES users (id), name VARCHAR(80) NOT NULL,
+			max_price INTEGER, max_walk INTEGER, room_type VARCHAR(40) NOT NULL DEFAULT '', amenities VARCHAR(500) NOT NULL DEFAULT '',
+			verified_only BOOLEAN NOT NULL DEFAULT false, landlord_verified_only BOOLEAN NOT NULL DEFAULT false,
+			water VARCHAR(10) NOT NULL DEFAULT '', power VARCHAR(10) NOT NULL DEFAULT '',
+			created_at {TS} NOT NULL, last_sent_at {TS})`,
+		`CREATE INDEX ix_saved_searches_user ON saved_searches (user_id)`,
+		`CREATE TABLE saved_search_seen (
+			search_id INTEGER NOT NULL REFERENCES saved_searches (id), listing_id INTEGER NOT NULL,
+			PRIMARY KEY (search_id, listing_id))`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

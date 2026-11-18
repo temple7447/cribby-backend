@@ -38,6 +38,7 @@ type sentCode struct{ To, Code string }
 type fakeMail struct {
 	mu               sync.Mutex
 	orderUpdates     [][2]string
+	searchAlerts     []sentAlert
 	verifications    []sentCode
 	resets           []sentCode
 	bookingRequests  []string    // admin emails
@@ -65,6 +66,19 @@ func (f *fakeMail) SendOrderUpdate(_ context.Context, to, title, _, _, _ string)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.orderUpdates = append(f.orderUpdates, [2]string{to, title})
+	return nil
+}
+
+type sentAlert struct {
+	To, Name string
+	Titles   []string
+	Total    int
+}
+
+func (f *fakeMail) SendSearchAlert(_ context.Context, to, name string, titles []string, total int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.searchAlerts = append(f.searchAlerts, sentAlert{to, name, titles, total})
 	return nil
 }
 
