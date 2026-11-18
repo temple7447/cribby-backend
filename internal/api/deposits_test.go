@@ -257,3 +257,48 @@ func TestLandlordDashboardShowsHomesAndMoney(t *testing.T) {
 		t.Fatalf("not the tenant's money: %v", m)
 	}
 }
+
+func TestListingViewsCountOncePerPersonPerDay(t *testing.T) {
+	l := newLease(t)
+	e := l.e
+	views := func() (float64, float64) {
+		home := e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)["homes"].([]any)[0].(obj)
+		return home["views_7d"].(float64), home["views_total"].(float64)
+	}
+	guest := func(ip string) {
+		req, _ := http.NewRequest(http.MethodGet, e.srv.URL+path("/api/v1/listings/%d", l.listingID), nil)
+		req.Header.Set("X-Forwarded-For", ip)
+		req.Header.Set("User-Agent", "TestBrowser/1.0")
+		if code, _ := e.send(req, ""); code != 200 {
+			t.Fatalf("guest view: %d", code)
+		}
+	}
+	if a, b := views(); a != 0 || b != 0 {
+		t.Fatalf("no views yet: %v %v", a, b)
+	}
+
+	e.expect(200, "GET", path("/listings/%d", l.listingID), l.tenant, nil)
+	e.expect(200, "GET", path("/listings/%d", l.listingID), l.tenant, nil) // the same person again: still one
+	if a, _ := views(); a != 1 {
+		t.Fatalf("one signed-in person = 1 view, got %v", a)
+	}
+	e.expect(200, "GET", path("/listings/%d", l.listingID), l.landlord, nil) // the poster's own visits don't count
+	if a, _ := views(); a != 1 {
+		t.Fatalf("the poster doesn't count, got %v", a)
+	}
+	guest("10.0.0.1")
+	guest("10.0.0.1")
+	guest("10.0.0.2")
+	if a, b := views(); a != 3 || b != 3 {
+		t.Fatalf("two guests + one signed-in = 3, got %v %v", a, b)
+	}
+
+	// Yesterday's views fall out of the 7-day number once they are older than a week, but stay in the total.
+	e.exec(`UPDATE listing_views SET day = '2020-01-01' WHERE id = (SELECT MIN(id) FROM listing_views)`)
+	if a, b := views(); a != 2 || b != 3 {
+		t.Fatalf("old view: got %v %v", a, b)
+	}
+	if n := e.count(`SELECT COUNT(*) FROM listing_views WHERE viewer LIKE '%tenant%' OR viewer LIKE '%10.0.0%'`); n != 0 {
+		t.Fatal("nothing readable may be stored")
+	}
+}

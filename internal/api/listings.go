@@ -94,6 +94,7 @@ func (s *Server) getListing(w http.ResponseWriter, r *http.Request) error {
 	if err := s.attachChecklist(r, l); err != nil {
 		return err
 	}
+	s.countView(r, l)
 	writeJSON(w, http.StatusOK, l)
 	return nil
 }

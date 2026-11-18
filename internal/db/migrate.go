@@ -429,6 +429,12 @@ var goMigrations = []struct {
 		`CREATE INDEX ix_deposits_booking ON deposits (booking_id, status)`,
 		`CREATE INDEX ix_deposits_status ON deposits (status, auto_release_at)`,
 	}},
+	{"026_listing_views", []string{
+		`CREATE TABLE listing_views (
+			id {PK}, listing_id INTEGER NOT NULL REFERENCES listings (id), viewer VARCHAR(64) NOT NULL, day VARCHAR(10) NOT NULL,
+			CONSTRAINT uq_listing_views UNIQUE (listing_id, viewer, day))`,
+		`CREATE INDEX ix_listing_views_day ON listing_views (listing_id, day)`,
+	}},
 	// Landlords look up conversations and bookings by listing, so index those.
 	{"007_owner_inbox_indexes", []string{
 		`CREATE INDEX IF NOT EXISTS ix_conversations_listing_id ON conversations (listing_id)`,

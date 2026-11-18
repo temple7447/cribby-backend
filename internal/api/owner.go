@@ -1,6 +1,9 @@
 package api
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -176,7 +179,7 @@ func (s *Server) ownerDashboard(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx, ex := r.Context(), s.DB.Executor
-	homes, err := store.OwnerListingStats(ctx, ex, user.ID)
+	homes, err := store.OwnerListingStats(ctx, ex, user.ID, time.Now().UTC().AddDate(0, 0, -6).Format("2006-01-02"))
 	if err != nil {
 		return err
 	}
@@ -219,4 +222,35 @@ func (s *Server) ownerDashboard(w http.ResponseWriter, r *http.Request) error {
 		"landlord_verified":  verified,
 	})
 	return nil
+}
+
+// countView records that someone opened a listing. People are counted once per day, from an opaque token that
+// changes every day (a keyed hash of the signed-in account, or of the address and browser for guests), so nobody
+// can be followed from one day to the next and nothing readable is stored. The poster's own visits don't count.
+func (s *Server) countView(r *http.Request, l *model.Listing) {
+	if l.Status != model.ListingApproved || r.Method != http.MethodGet {
+		return
+	}
+	who := ""
+	if strings.TrimSpace(r.Header.Get("Authorization")) != "" {
+		if u, err := s.currentUser(r); err == nil {
+			if l.OwnerID != nil && *l.OwnerID == u.ID {
+				return
+			}
+			who = "u" + itoa(u.ID)
+		}
+	}
+	if who == "" {
+		ua := r.Header.Get("User-Agent")
+		if ua == "" {
+			return
+		}
+		who = "g" + clientIP(r) + "|" + ua
+	}
+	day := time.Now().UTC().Format("2006-01-02")
+	mac := hmac.New(sha256.New, []byte(s.cfg.SecretKey))
+	mac.Write([]byte(day + "|" + who))
+	if err := store.RecordListingView(r.Context(), s.DB.Executor, l.ID, hex.EncodeToString(mac.Sum(nil))[:32], day); err != nil {
+		s.log.Debug("view not recorded", "listing", l.ID, "err", err)
+	}
 }

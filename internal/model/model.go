@@ -538,6 +538,8 @@ type OwnerListingStat struct {
 	PricePer        int     `json:"price_per"`
 	Rating          float64 `json:"rating"`
 	Reviews         int     `json:"reviews"`
+	Views7d         int     `json:"views_7d"`         // different people who opened it in the last 7 days
+	ViewsTotal      int     `json:"views_total"`
 	Saves           int     `json:"saves"`            // people who favourited it
 	Chats           int     `json:"chats"`            // students who messaged about it
 	PendingRequests int     `json:"pending_requests"` // booking requests waiting for an answer
