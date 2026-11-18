@@ -210,3 +210,50 @@ func TestDepositTimers(t *testing.T) {
 }
 
 func (e *env) signupToken(email string) string { tok, _ := e.signup(email); return tok }
+
+func TestLandlordDashboardShowsHomesAndMoney(t *testing.T) {
+	l := newLease(t)
+	e := l.e
+	e.expect(401, "GET", "/owner/dashboard", "", nil)
+
+	// Nothing yet: the tenant has no homes, and the landlord has one with no money.
+	if d := e.expect(200, "GET", "/owner/dashboard", l.tenant, nil).(obj); len(d["homes"].([]any)) != 0 {
+		t.Fatalf("a tenant has no homes: %v", d)
+	}
+	d := e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)
+	if len(d["homes"].([]any)) != 1 || d["payout_account_set"] != false {
+		t.Fatalf("dashboard: %v", d)
+	}
+
+	// A pending request, then an approved one with a held deposit.
+	e.expect(200, "PUT", "/payout-account", l.landlord, bank)
+	b := l.book(30)
+	d = e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)
+	if d["attention"].(obj)["pending_requests"] != 1.0 || d["payout_account_set"] != true {
+		t.Fatalf("pending request: %v", d)
+	}
+	l.approve(b)
+	dep := id(l.deposit(b))
+	l.webhook(l.ref(dep), 80_000)
+	d = e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)
+	home := d["homes"].([]any)[0].(obj)
+	if d["money"].(obj)["held"] != 760.0 || home["held_deposits"] != 1.0 || home["approved_bookings"] != 1.0 {
+		t.Fatalf("held: %v", d)
+	}
+
+	// Released, then paid out: the money moves from "held" to "to receive" to "received".
+	e.expect(200, "POST", path("/deposits/%d/confirm", dep), l.tenant, nil)
+	d = e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)
+	if m := d["money"].(obj); m["held"] != 0.0 || m["to_receive"] != 760.0 || m["received"] != 0.0 {
+		t.Fatalf("to receive: %v", m)
+	}
+	e.expect(200, "POST", path("/admin/deposits/%d/payout-paid", dep), l.admin, obj{"reference": "TRF-9"})
+	d = e.expect(200, "GET", "/owner/dashboard", l.landlord, nil).(obj)
+	if m := d["money"].(obj); m["to_receive"] != 0.0 || m["received"] != 760.0 {
+		t.Fatalf("received: %v", m)
+	}
+	// The student's dashboard never shows the landlord's money.
+	if m := e.expect(200, "GET", "/owner/dashboard", l.tenant, nil).(obj)["money"].(obj); m["received"] != 0.0 {
+		t.Fatalf("not the tenant's money: %v", m)
+	}
+}

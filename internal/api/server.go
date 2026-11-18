@@ -205,6 +205,7 @@ func (s *Server) routes() {
 
 	// landlord tools: the signed-in user's own listings' chats and booking requests
 	m.Handle("GET "+p+"/owner/summary", s.h(s.ownerSummary))
+	m.Handle("GET "+p+"/owner/dashboard", s.h(s.ownerDashboard))
 	m.Handle("GET "+p+"/owner/conversations", s.h(s.ownerConversations))
 	m.Handle("GET "+p+"/owner/conversations/{conversation_id}", s.h(s.ownerConversation))
 	m.Handle("POST "+p+"/owner/conversations/{conversation_id}/messages", s.h(s.ownerReply))

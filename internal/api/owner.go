@@ -168,3 +168,55 @@ func (s *Server) ownerBookings(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, http.StatusOK, out)
 	return nil
 }
+
+// ownerDashboard is the landlord's home screen: what needs an answer, how each home is doing, and the money.
+func (s *Server) ownerDashboard(w http.ResponseWriter, r *http.Request) error {
+	user, err := s.currentUser(r)
+	if err != nil {
+		return err
+	}
+	ctx, ex := r.Context(), s.DB.Executor
+	homes, err := store.OwnerListingStats(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	money, err := store.OwnerMoneyFor(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	unread, err := store.CountUnreadForOwner(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	pending, err := store.CountPendingBookingsForOwner(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	disputes, err := store.OwnerDisputes(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	acct, err := store.PayoutAccountFor(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	verified, err := store.IsLandlordVerified(ctx, ex, user.ID)
+	if err != nil {
+		return err
+	}
+	inReview := 0
+	for _, h := range homes {
+		if h.Status == model.ListingPending {
+			inReview++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"homes":              homes,
+		"money":              money,
+		"attention":          map[string]int{"unread_messages": unread, "pending_requests": pending, "disputes": disputes, "homes_in_review": inReview},
+		"payout_account_set": acct != nil,
+		"payments_on":        s.canTakePayments(),
+		"landlord_verified":  verified,
+	})
+	return nil
+}

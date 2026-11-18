@@ -529,3 +529,25 @@ type Deposit struct {
 	AutoReleaseAt   *db.Time `json:"auto_release_at"`
 	CompletedAt     *db.Time `json:"completed_at"`
 }
+
+// OwnerListingStat is one home on the landlord dashboard.
+type OwnerListingStat struct {
+	ID              int     `json:"id"`
+	Title           string  `json:"title"`
+	Status          string  `json:"status"` // pending | approved | rejected
+	PricePer        int     `json:"price_per"`
+	Rating          float64 `json:"rating"`
+	Reviews         int     `json:"reviews"`
+	Saves           int     `json:"saves"`            // people who favourited it
+	Chats           int     `json:"chats"`            // students who messaged about it
+	PendingRequests int     `json:"pending_requests"` // booking requests waiting for an answer
+	ApprovedBooking int     `json:"approved_bookings"`
+	HeldDeposits    int     `json:"held_deposits"` // deposits Cribby is holding for it
+}
+
+// OwnerMoney is what the person has coming in through Cribby (naira, after Cribby's fee).
+type OwnerMoney struct {
+	Held      int `json:"held"`       // paid by a student/buyer, not yet released
+	ToReceive int `json:"to_receive"` // released, waiting for Cribby to send it
+	Received  int `json:"received"`   // already sent to their bank account
+}
