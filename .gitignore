@@ -1,7 +1,7 @@
 # build output
 /bin/
 /server
-/seed
+/purgedemo
 
 # local databases and secrets
 *.db

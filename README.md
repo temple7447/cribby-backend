@@ -19,7 +19,6 @@ no changes. The Python version is still in this repo's git history (`master`).
 
 ```bash
 cp .env.example .env            # defaults are fine for local dev (SQLite file ./campus.db)
-go run ./cmd/seed demo          # demo data: maya@stateuniversity.edu / password123
 go run ./cmd/server             # applies migrations, then serves on :8000
 curl localhost:8000/health
 ```
@@ -27,13 +26,9 @@ curl localhost:8000/health
 `cmd/server` applies any pending migrations on boot (replacing `alembic upgrade head && uvicorn …`).
 Flags: `-migrate-only` (apply and exit), `-skip-migrate`.
 
-Seeding (`cmd/seed`) replaces the three Python scripts:
-
-| Command | Was | Notes |
-|---|---|---|
-| `seed demo` | `scripts/seed.py` | full demo dataset (use on an empty DB) |
-| `seed places` | `scripts/seed_places.py` | idempotent; safe against production |
-| `seed photos` | `scripts/seed_photos.py` | needs Cloudinary credentials |
+There is no demo data and no seeding. A fresh database starts empty (apart from the list of schools).
+If an old database still holds the early placeholder homes or demo accounts, `go run ./cmd/purgedemo`
+shows what it would remove (a dry run); add `-apply` to remove it. Take a backup first (`go run ./cmd/backup`).
 
 ## Configuration
 
@@ -46,7 +41,7 @@ is translated to `sslmode=…` and `channel_binding` is dropped. `PORT` is new (
 
 ```
 cmd/server        the API binary
-cmd/seed          demo-data and backfill commands
+cmd/purgedemo     removes leftover demo data from an old database
 internal/config   env + .env loading
 internal/db       SQLite/Postgres access, time/date/JSON column types, migrations
 internal/model    row types; json tags are the response schema
