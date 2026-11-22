@@ -71,6 +71,13 @@ func (s *Server) routes() {
 	m.Handle("POST "+p+"/client-errors", s.h(s.reportClientError))
 	m.Handle("GET "+p+"/admin/client-errors", s.h(s.adminClientErrors))
 	m.Handle("PATCH "+p+"/admin/client-errors/{error_id}", s.h(s.adminResolveClientError))
+	m.Handle("DELETE "+p+"/admin/client-errors/{error_id}", s.h(s.adminDeleteClientError))
+	m.Handle("DELETE "+p+"/admin/users/{user_id}", s.h(s.adminDeleteUser))
+	m.Handle("DELETE "+p+"/admin/listings/{listing_id}", s.h(s.adminEraseListing))
+	m.Handle("DELETE "+p+"/admin/bookings/{booking_id}", s.h(s.adminDeleteBooking))
+	m.Handle("DELETE "+p+"/admin/vendors/{vendor_id}", s.h(s.adminDeleteVendor))
+	m.Handle("DELETE "+p+"/admin/scam-alerts/{alert_id}", s.h(s.adminDeleteScamAlert))
+	m.Handle("DELETE "+p+"/admin/referrals/{code}", s.h(s.adminDeleteReferral))
 
 	// auth
 	m.Handle("POST "+p+"/auth/signup", s.h(s.signup))
